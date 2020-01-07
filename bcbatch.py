@@ -13,7 +13,6 @@ TASKS TO COMPLETE:
 [x] GameResult
 [x] run_game
 [ ] better print_results
-[ ] use gradle daemon
 """
 
 __author__ = "Arya Kumar"
@@ -61,10 +60,17 @@ class RunnerInfo:
     def matchings(self):
         """ Generator that returns the correct number of each m
             atching of p1 and p2 """
+        matches_played = set()
+
         for p1 in self.player_ones:
             for p2 in self.player_twos:
-                # if p1 == p2:
-                #     continue  # disallow same player games
+                if (p1, p2) in matches_played:
+                    continue  # pairing seen before
+                if p1 == p2:
+                    continue  # disallow playing against self
+                matches_played.add((p1, p2))
+                matches_played.add((p2, p1))
+
                 for m in self.maps:
                     yield p1, p2, m
 
@@ -92,7 +98,7 @@ def run_game(p1, p2, m):
     """ run a single game between p1 and p2 on map m, and returns 
         a GameResult object. """
     print("running {} vs {} on map {}".format(p1, p2, m))
-    saveloc = "matches/{}-vs-{}-on-{}-@{}".format(p1, p2, m, int(time.time()))
+    saveloc = "matches/{}-vs-{}-on-{}-@{}.bc20".format(p1, p2, m, int(time.time()))
     rawlines = subprocess.check_output(
         "./gradlew run -PteamA={} -PteamB={} -Pmaps={} -Preplay={}".format(
             p1, p2, m, saveloc
