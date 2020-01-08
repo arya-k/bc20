@@ -3,7 +3,8 @@ package prelim;
 import battlecode.common.*;
 
 class HQ extends Robot {
-    static int unitTick = 0;
+    static RobotType spawnType = RobotType.MINER;
+    static int spawnTick = 0;
 
     @Override
     public void onAwake() throws GameActionException {
@@ -18,15 +19,19 @@ class HQ extends Robot {
         } else {
             if(shouldSpawn()) trySpawn();
         }
+        Clock.yield();
     }
 
     private boolean shouldSpawn() throws GameActionException {
-        if(rc.getTeamSoup() > MINER_SOUP_THRESHOLD) unitTick++;
-        return ((unitTick %= MINER_RATE) == 0);
+        if(rc.getTeamSoup() < MINER_SOUP_THRESHOLD) return false;
+        System.out.println(spawnTick);
+        spawnTick++;
+        return ((spawnTick %= MINER_RATE) == 0);
     }
 
     private void trySpawn() throws GameActionException {
-        Direction dir = getSpawnDirection();
-        if(dir != null) rc.buildRobot(RobotType.MINER, dir);
+        Direction dir = getSpawnDirection(spawnType);
+        System.out.println(dir);
+        if(dir != null) rc.buildRobot(spawnType, dir);
     }
 }

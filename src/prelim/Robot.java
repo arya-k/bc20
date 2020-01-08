@@ -10,12 +10,12 @@ abstract class Robot {
 
     /* CONSTANTS */
     // static final int NAME_OF_CONSTANT = 10;
-    static final int MINER_SOUP_THRESHOLD = 50;
-    static final int MINER_RATE = 5;
-    static final int LANDSCAPER_SOUP_THRESHOLD = 50;
-    static final int LANDSCAPER_RATE = 5;
-    static final int DRONE_SOUP_THRESHOLD = 50;
-    static final int DRONE_RATE = 5;
+    static final int MINER_SOUP_THRESHOLD = 100;
+    static final int MINER_RATE = 50;
+    static final int LANDSCAPER_SOUP_THRESHOLD = 100;
+    static final int LANDSCAPER_RATE = 50;
+    static final int DRONE_SOUP_THRESHOLD = 100;
+    static final int DRONE_RATE = 50;
 
 
     public static void init(RobotController rc) throws GameActionException {
@@ -67,12 +67,11 @@ abstract class Robot {
      * @return the direction to spawn or null if none is possible
      * @throws GameActionException
      */
-    public static Direction getSpawnDirection() throws GameActionException {
+    public static Direction getSpawnDirection(RobotType spawnType) throws GameActionException {
         Direction[] all = Direction.allDirections();
         for(Direction dir: all) {
-            if(rc.canBuildRobot(type, dir)) return dir;
+            if(rc.canBuildRobot(spawnType, dir)) return dir;
         }
         return null;
     }
-
 }

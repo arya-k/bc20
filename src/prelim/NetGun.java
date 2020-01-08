@@ -10,5 +10,8 @@ class NetGun extends Robot {
 
     @Override
     public void onUpdate() throws GameActionException {
+        int victim = robotToShoot();
+        if(victim != -1) rc.shootUnit(victim);
+        Clock.yield();
     }
 }

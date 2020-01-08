@@ -3,7 +3,8 @@ package prelim;
 import battlecode.common.*;
 
 class DesignSchool extends Robot {
-    static int unitTick = 0;
+    static RobotType spawnType = RobotType.LANDSCAPER;
+    static int spawnTick = 0;
 
     @Override
     public void onAwake() throws GameActionException {
@@ -13,15 +14,17 @@ class DesignSchool extends Robot {
     @Override
     public void onUpdate() throws GameActionException {
         if(shouldSpawn()) trySpawn();
+        Clock.yield();
     }
 
     private boolean shouldSpawn() throws GameActionException {
-        if(rc.getTeamSoup() > LANDSCAPER_SOUP_THRESHOLD) unitTick++;
-        return ((unitTick %= LANDSCAPER_RATE) == 0);
+        if(rc.getTeamSoup() < LANDSCAPER_SOUP_THRESHOLD) return false;
+        spawnTick++;
+        return ((spawnTick %= LANDSCAPER_RATE) == 0);
     }
 
     private void trySpawn() throws GameActionException {
-        Direction dir = getSpawnDirection();
-        if(dir != null) rc.buildRobot(RobotType.LANDSCAPER, dir);
+        Direction dir = getSpawnDirection(spawnType);
+        if(dir != null) rc.buildRobot(spawnType, dir);
     }
 }
