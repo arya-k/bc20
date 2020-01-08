@@ -12,7 +12,7 @@ public strictfp class RobotPlayer {
                 case REFINERY:           robot = new Refinery();           break;
                 case VAPORATOR:          robot = new Vaporator();          break;
                 case DESIGN_SCHOOL:      robot = new DesignSchool();       break;
-                case FULFILLMENT_CENTER: robot = new FullfillmentCenter(); break;
+                case FULFILLMENT_CENTER: robot = new FulfillmentCenter(); break;
                 case LANDSCAPER:         robot = new Landscaper();         break;
                 case DELIVERY_DRONE:     robot = new DeliveryDrone();      break;
                 case NET_GUN:            robot = new NetGun();             break;

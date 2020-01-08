@@ -2,31 +2,26 @@ package prelim;
 
 import battlecode.common.*;
 
-class HQ extends Robot {
+class FulfillmentCenter extends Robot {
     static int unitTick = 0;
 
     @Override
     public void onAwake() throws GameActionException {
-        //TODO: message position
+        System.out.println("I'm an FulfillmentCenter!");
     }
 
     @Override
     public void onUpdate() throws GameActionException {
-        int id = robotToShoot();
-        if(id != -1) {
-            rc.shootUnit(id);
-        } else {
-            if(shouldSpawn()) trySpawn();
-        }
+        if(shouldSpawn()) trySpawn();
     }
 
     private boolean shouldSpawn() throws GameActionException {
-        if(rc.getTeamSoup() > MINER_SOUP_THRESHOLD) unitTick++;
-        return ((unitTick %= MINER_RATE) == 0);
+        if(rc.getTeamSoup() > DRONE_SOUP_THRESHOLD) unitTick++;
+        return ((unitTick %= DRONE_RATE) == 0);
     }
 
     private void trySpawn() throws GameActionException {
         Direction dir = getSpawnDirection();
-        if(dir != null) rc.buildRobot(RobotType.MINER, dir);
+        if(dir != null) rc.buildRobot(RobotType.DELIVERY_DRONE, dir);
     }
 }
