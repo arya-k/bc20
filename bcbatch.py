@@ -60,17 +60,10 @@ class RunnerInfo:
     def matchings(self):
         """ Generator that returns the correct number of each m
             atching of p1 and p2 """
-        matches_played = set()
-
         for p1 in self.player_ones:
             for p2 in self.player_twos:
-                if (p1, p2) in matches_played:
-                    continue  # pairing seen before
                 if p1 == p2:
                     continue  # disallow playing against self
-                matches_played.add((p1, p2))
-                matches_played.add((p2, p1))
-
                 for m in self.maps:
                     yield p1, p2, m
 
