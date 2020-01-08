@@ -2,7 +2,7 @@ package prelim;
 
 import battlecode.common.*;
 
-class FulfillmentCenter extends Robot {
+class FulfillmentCenter extends Building {
     static RobotType spawnType = RobotType.DELIVERY_DRONE;
     static int spawnTick = 0;
 

@@ -2,7 +2,7 @@ package prelim;
 
 import battlecode.common.*;
 
-class DesignSchool extends Robot {
+class DesignSchool extends Building {
     static RobotType spawnType = RobotType.LANDSCAPER;
     static int spawnTick = 0;
 

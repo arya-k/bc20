@@ -2,7 +2,7 @@ package prelim;
 
 import battlecode.common.*;
 
-class HQ extends Robot {
+class HQ extends Building {
     static RobotType spawnType = RobotType.MINER;
     static int spawnTick = 0;
 

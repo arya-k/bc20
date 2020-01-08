@@ -2,7 +2,7 @@ package prelim;
 
 import battlecode.common.*;
 
-class Refinery extends Robot {
+class Refinery extends Building {
     @Override
     public void onAwake() throws GameActionException {
         System.out.println("I'm an Refinery!");
