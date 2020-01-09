@@ -30,6 +30,7 @@ abstract class Robot {
         enemy = ally.opponent();
     }
 
+
     /**
      * Called once when the unit first starts to run code.
      * Executed just before the first call to onUpdate.
@@ -43,16 +44,23 @@ abstract class Robot {
     abstract void onUpdate() throws GameActionException;
 
     /**
-     * Computes the absolute value between two integers
-     * @param a first number
-     * @param b second number
-     * @return abs(a-b)
+     * Convert from direction to integer, in ccw direction.
+     * @param dir direction input
+     * @return direction to number
      */
-    static int abs(int a, int b) {
-        return a < b ? b-a : a-b;
+    static int directionToInt(Direction dir) {
+        switch(dir) {
+            case EAST: return 0;
+            case NORTHEAST: return 1;
+            case NORTH: return 2;
+            case NORTHWEST: return 3;
+            case WEST: return 4;
+            case SOUTHWEST: return 5;
+            case SOUTH: return 6;
+            case SOUTHEAST: return 7;
+            default: return -1;
+        }
     }
-
-
     
     // Communication Code
 

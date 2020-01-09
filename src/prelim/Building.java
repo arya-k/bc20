@@ -26,28 +26,15 @@ public abstract class Building extends Robot {
         return closest;
     }
 
-    private static int directionToInt(Direction dir) {
-        switch(dir) {
-            case EAST: return 0;
-            case NORTHEAST: return 1;
-            case NORTH: return 2;
-            case NORTHWEST: return 3;
-            case WEST: return 4;
-            case SOUTHWEST: return 5;
-            case SOUTH: return 6;
-            case SOUTHEAST: return 7;
-            default: return -1;
-        }
-    }
-
     private static int getAccessible(MapLocation loc) throws GameActionException {
         int transfers = 0;
         int elev = rc.senseElevation(loc);
         for(Direction dir: Direction.allDirections()) {
             MapLocation cur = loc.add(dir);
-            if(rc.canSenseLocation(cur) && abs(elev, rc.senseElevation(cur)) <= GameConstants.MAX_DIRT_DIFFERENCE) {
-                transfers += 1;
-            }
+            if (rc.canSenseLocation(cur)) {
+                if (Math.abs(elev - rc.senseElevation(cur)) <= GameConstants.MAX_DIRT_DIFFERENCE)
+                    transfers++;
+                }
         }
         return transfers;
     }
@@ -63,7 +50,7 @@ public abstract class Building extends Robot {
         }
     }
 
-    private static boolean checkNetGunDanger(RobotInfo robot, Direction dir, MapLocation loc) throws GameActionException {
+    static boolean checkNetGunDanger(RobotInfo robot, Direction dir, MapLocation loc) throws GameActionException {
         MapLocation check = robot.getLocation().add(dir);
         int dist = check.distanceSquaredTo(loc);
         int pollution = rc.sensePollution(loc);
@@ -113,10 +100,7 @@ public abstract class Building extends Robot {
         Direction dir = null;
         for(int i = 0; i<8; i++) {
             int cur = 0;
-            System.out.println(spawnWeights[INFO_AMT-1]);
-            for(int j = 0; j<INFO_AMT; j++) {
-                cur += spawnWeights[j] * info[i][j];
-            }
+            for(int j = 0; j<INFO_AMT; j++) cur += spawnWeights[j] * info[i][j];
             if(cur > score && rc.canBuildRobot(spawnType, all[i])) {
                 dir = all[i];
                 score = cur;

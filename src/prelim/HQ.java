@@ -32,7 +32,6 @@ class HQ extends Building {
 
     private void trySpawn() throws GameActionException {
         Direction dir = getSpawnDirection(spawnType);
-        System.out.println("Direction: " + dir);
         if(dir != null) rc.buildRobot(spawnType, dir);
     }
 }
