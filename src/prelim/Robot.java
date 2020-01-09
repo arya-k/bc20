@@ -18,7 +18,7 @@ abstract class Robot {
     static final int DRONE_RATE = 50;
 
 
-    public static void init(RobotController rc) throws GameActionException {
+    public static void init(RobotController rc) {
         Robot.rc = rc;
         type = rc.getType();
         spawnPos = rc.getLocation();
@@ -39,8 +39,13 @@ abstract class Robot {
      */
     abstract void onUpdate() throws GameActionException;
 
-    //TODO: sorry arya this probably shouldn't be here but i use it in building
+    /**
+     * Computes the absolute value between two integers
+     * @param a first number
+     * @param b second number
+     * @return abs(a-b)
+     */
     static int abs(int a, int b) {
-        return (a-b) < (b-a) ? a-b : b-a;
+        return a < b ? b-a : a-b;
     }
 }

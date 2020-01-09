@@ -9,9 +9,8 @@ public abstract class Building extends Robot {
     /**
      * Determines the robot to shoot
      * @return the id of the robot to shoot or -1 if none is possible
-     * @throws GameActionException
      */
-    public static int robotToShoot() throws GameActionException {
+    public static int robotToShoot() {
         // -1 means use full sense radius (do not limit)
         RobotInfo[] robots = rc.senseNearbyRobots(-1, enemy);
 
@@ -53,7 +52,7 @@ public abstract class Building extends Robot {
         return transfers;
     }
 
-    private static int getIndexOfRobot(RobotInfo robot) throws GameActionException {
+    private static int getIndexOfRobot(RobotInfo robot) {
         int i = rc.getTeam() == ally ? 0 : 4; // skip by 4 in array if enemy
         switch (robot.getType()) {
             case MINER: return i + 5;
@@ -75,7 +74,7 @@ public abstract class Building extends Robot {
     public static void scanArea() throws GameActionException {
         // Each of the 8 directions has 14 data points associated
         info = new int[8][INFO_AMT];
-        int r = sqrt(rc.getCurrentSensorRadiusSquared());
+        int r = (int)Math.sqrt(rc.getCurrentSensorRadiusSquared());
         // Iterate over the entire square, not just the circle
         for(int x = -r; x <= r; x++) {
             for(int y = -r; y <= r; y++) {
@@ -106,9 +105,8 @@ public abstract class Building extends Robot {
     /**
      * Determines the direction to spawn a new unit
      * @return the direction to spawn or null if none is possible
-     * @throws GameActionException
      */
-    public static Direction getSpawnDirection(RobotType spawnType) throws GameActionException {
+    public static Direction getSpawnDirection(RobotType spawnType) {
         int score = -1 << 30;
         Direction[] all = Direction.allDirections();
         Direction dir = null;
