@@ -9,6 +9,7 @@ abstract class Robot {
     static MapLocation spawnPos;
 
     /* CONSTANTS */
+    static final int INFO_AMT = 14;
     static final int MINER_SOUP_THRESHOLD = 100;
     static final int MINER_RATE = 50;
     static final int LANDSCAPER_SOUP_THRESHOLD = 100;

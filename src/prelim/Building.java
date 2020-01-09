@@ -59,6 +59,7 @@ public abstract class Building extends Robot {
             case MINER: return i + 5;
             case LANDSCAPER: return i + 6;
             case DELIVERY_DRONE: return i + 7;
+            case COW: return 13;
             default: return i + 8;
         }
     }
@@ -73,7 +74,7 @@ public abstract class Building extends Robot {
 
     public static void scanArea() throws GameActionException {
         // Each of the 8 directions has 14 data points associated
-        info = new int[8][14];
+        info = new int[8][INFO_AMT];
         int r = sqrt(rc.getCurrentSensorRadiusSquared());
         // Iterate over the entire square, not just the circle
         for(int x = -r; x <= r; x++) {
@@ -113,7 +114,7 @@ public abstract class Building extends Robot {
         Direction dir = null;
         for(int i = 0; i<8; i++) {
             int cur = 0;
-            for(int j = 0; j<14; j++) {
+            for(int j = 0; j<INFO_AMT; j++) {
                 cur += spawnWeights[j] * info[i][j];
             }
             if(cur > score && rc.canBuildRobot(type, all[i])) {
