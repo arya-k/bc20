@@ -8,7 +8,8 @@ class FulfillmentCenter extends Building {
 
     @Override
     public void onAwake() throws GameActionException {
-        System.out.println("I'm an FulfillmentCenter!");
+        //soup, pollution, flooding, elevation, accessability, friendly x4, enemy x4, net gun danger
+        spawnWeights = new int[]{0,0,0,0,0,0,0,1,1,0,0,-10000};
     }
 
     @Override

@@ -8,7 +8,8 @@ class HQ extends Building {
 
     @Override
     public void onAwake() throws GameActionException {
-        //TODO: message position
+        //soup, pollution, flooding, elevation, accessability, friendly x4, enemy x4, net gun danger
+        spawnWeights = new int[]{1,-1,-1,0,0,0,0,0,0,0,0,0};
     }
 
     @Override

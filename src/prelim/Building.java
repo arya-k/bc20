@@ -4,6 +4,7 @@ import battlecode.common.*;
 
 public abstract class Building extends Robot {
     private static int[][] info;
+    static int[] spawnWeights;
 
     /**
      * Determines the robot to shoot
@@ -107,10 +108,19 @@ public abstract class Building extends Robot {
      * @throws GameActionException
      */
     public static Direction getSpawnDirection(RobotType spawnType) throws GameActionException {
+        int score = -1 << 30;
         Direction[] all = Direction.allDirections();
-        for(Direction dir: all) {
-            if(rc.canBuildRobot(spawnType, dir)) return dir;
+        Direction dir = null;
+        for(int i = 0; i<8; i++) {
+            int cur = 0;
+            for(int j = 0; j<14; j++) {
+                cur += spawnWeights[j] * info[i][j];
+            }
+            if(cur > score && rc.canBuildRobot(type, all[i])) {
+                dir = all[i];
+                score = cur;
+            }
         }
-        return null;
+        return dir;
     }
 }
