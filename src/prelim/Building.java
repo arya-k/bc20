@@ -62,8 +62,8 @@ public abstract class Building extends Robot {
         }
     }
 
-    private static boolean checkNetGunDanger(RobotInfo robot, MapLocation loc) throws GameActionException {
-        MapLocation check = robot.getLocation().add(spawnPos.directionTo(loc));
+    private static boolean checkNetGunDanger(RobotInfo robot, Direction dir, MapLocation loc) throws GameActionException {
+        MapLocation check = robot.getLocation().add(dir);
         int dist = check.distanceSquaredTo(loc);
         int pollution = rc.sensePollution(loc);
         int maxDist = GameConstants.NET_GUN_SHOOT_RADIUS_SQUARED + 1/(1 + pollution)/(1 + pollution);
@@ -71,23 +71,30 @@ public abstract class Building extends Robot {
     }
 
     public static void scanArea() throws GameActionException {
-        info = new int[8][13];
+        // Each of the 8 directions has 14 data points associated
+        info = new int[8][14];
         int r = sqrt(rc.getCurrentSensorRadiusSquared());
+        // Iterate over the entire square, not just the circle
         for(int x = -r; x <= r; x++) {
             for(int y = -r; y <= r; y++) {
                 MapLocation loc = spawnPos.translate(x, y);
                 if(rc.canSenseLocation(loc)) {
                     Direction dir = spawnPos.directionTo(loc);
                     int d = directionToInt(dir);
+                    // Collect basic data
                     info[d][0] += rc.senseSoup(loc);
                     info[d][1] += rc.sensePollution(loc);
                     info[d][2] += rc.senseFlooding(loc) ? 1 : 0; // java is dumb
                     info[d][3] += rc.senseElevation(loc);
                     info[d][4] += getAccessible(loc);
                     RobotInfo robot = rc.senseRobotAtLocation(loc);
-                    if(robot != null) {
-                        info[d][getIndexOfRobot(robot)] += 1;
-                        info[d][13] += checkNetGunDanger(robot, loc) ? 1 : 0;
+                    // Increment the correct robot count
+                    if(robot != null) info[d][getIndexOfRobot(robot)] += 1;
+                    // Check 8 spawn possibilities to see if they're in range of the possible net gun here
+                    if(robot != null && robot.getType() == RobotType.NET_GUN) {
+                        for(Direction check: Direction.allDirections()) {
+                            info[directionToInt(check)][13] += checkNetGunDanger(robot, check, loc) ? 1 : 0;
+                        }
                     }
                 }
             }
