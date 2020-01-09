@@ -37,4 +37,9 @@ abstract class Robot {
      * A single invocation may take longer than one tick.
      */
     abstract void onUpdate() throws GameActionException;
+
+    //TODO: sorry arya this probably shouldn't be here but i use it in building
+    static int abs(int a, int b) {
+        return (a-b) < (b-a) ? a-b : b-a;
+    }
 }
