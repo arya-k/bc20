@@ -8,8 +8,8 @@ class HQ extends Building {
 
     @Override
     public void onAwake() throws GameActionException {
-        //soup, pollution, flooding, elevation, accessability, friendly x4, enemy x4, net gun danger
-        spawnWeights = new int[]{1,-1,-1,0,0,0,0,0,0,0,0,0,0};
+        //soup, pollution, flooding, elevation, accessability, friendly x4, enemy x4, cows, net gun danger
+        spawnWeights = new int[]{2,-1,-1,0,0,-1,0,0,0,0,0,0,0,0};
     }
 
     @Override
@@ -18,6 +18,7 @@ class HQ extends Building {
         if(id != -1) {
             rc.shootUnit(id);
         } else {
+            scanArea();
             if(shouldSpawn()) trySpawn();
         }
         Clock.yield();
@@ -25,14 +26,13 @@ class HQ extends Building {
 
     private boolean shouldSpawn() throws GameActionException {
         if(rc.getTeamSoup() < MINER_SOUP_THRESHOLD) return false;
-        System.out.println(spawnTick);
         spawnTick++;
         return ((spawnTick %= MINER_RATE) == 0);
     }
 
     private void trySpawn() throws GameActionException {
         Direction dir = getSpawnDirection(spawnType);
-        System.out.println(dir);
+        System.out.println("Direction: " + dir);
         if(dir != null) rc.buildRobot(spawnType, dir);
     }
 }

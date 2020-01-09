@@ -8,12 +8,13 @@ class FulfillmentCenter extends Building {
 
     @Override
     public void onAwake() throws GameActionException {
-        //soup, pollution, flooding, elevation, accessability, friendly x4, enemy x4, cow, net gun danger
+        //soup, pollution, flooding, elevation, accessability, friendly x4, enemy x4, cows, net gun danger
         spawnWeights = new int[]{0,0,0,0,0,0,0,1,1,0,0,0,-10000};
     }
 
     @Override
     public void onUpdate() throws GameActionException {
+        scanArea();
         if(shouldSpawn()) trySpawn();
         Clock.yield();
     }

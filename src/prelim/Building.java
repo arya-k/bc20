@@ -81,6 +81,7 @@ public abstract class Building extends Robot {
                 MapLocation loc = spawnPos.translate(x, y);
                 if(rc.canSenseLocation(loc)) {
                     Direction dir = spawnPos.directionTo(loc);
+                    if(dir == Direction.CENTER) continue;
                     int d = directionToInt(dir);
                     // Collect basic data
                     info[d][0] += rc.senseSoup(loc);
@@ -89,7 +90,7 @@ public abstract class Building extends Robot {
                     info[d][3] += rc.senseElevation(loc);
                     info[d][4] += getAccessible(loc);
                     RobotInfo robot = rc.senseRobotAtLocation(loc);
-                    // Increment the correct robot count
+                    // Increment the correct robot count (including cows)
                     if(robot != null) info[d][getIndexOfRobot(robot)] += 1;
                     // Check 8 spawn possibilities to see if they're in range of the possible net gun here
                     if(robot != null && robot.getType() == RobotType.NET_GUN) {
@@ -112,10 +113,11 @@ public abstract class Building extends Robot {
         Direction dir = null;
         for(int i = 0; i<8; i++) {
             int cur = 0;
+            System.out.println(spawnWeights[INFO_AMT-1]);
             for(int j = 0; j<INFO_AMT; j++) {
                 cur += spawnWeights[j] * info[i][j];
             }
-            if(cur > score && rc.canBuildRobot(type, all[i])) {
+            if(cur > score && rc.canBuildRobot(spawnType, all[i])) {
                 dir = all[i];
                 score = cur;
             }
