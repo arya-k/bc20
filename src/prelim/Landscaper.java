@@ -12,10 +12,18 @@ class Landscaper extends Unit {
     public void onUpdate() throws GameActionException {
     }
 
-    public void buildWallAt(MapLocation location, int height, boolean directlyUnder) throws GameActionException { // Landscape at a certain point
+    /*
+        Builds wall at a certain point
+        if height < 0, it will dig a hole in that location
+        *** height is NOT elevation. an elevation function will be written later. height is the number of dirt that will
+         be placed or removed from that location. ***
+     */
+    public void landscapeAt(MapLocation location, int height, boolean directlyUnder) throws GameActionException {
         // WHEN THE LANDSCAPER HAS ENOUGH DIRT OR AS MUCH AS IT CAN HAVE
-        if (rc.getDirtCarrying() >= height ||
-                (height > RobotType.LANDSCAPER.dirtLimit && rc.getDirtCarrying() == RobotType.LANDSCAPER.dirtLimit)) {
+        if (height > 0 && (rc.getDirtCarrying() >= height ||
+                    (height > RobotType.LANDSCAPER.dirtLimit && rc.getDirtCarrying() == RobotType.LANDSCAPER.dirtLimit)) ||
+            height < 0 && (RobotType.LANDSCAPER.dirtLimit - rc.getDirtCarrying() > height ||
+                    (height > RobotType.LANDSCAPER.dirtLimit && rc.getDirtCarrying() == 0))) {
 
             // BUILD WALL ADJACENT TO LANDSCAPER
             if (!directlyUnder) {
@@ -43,39 +51,72 @@ class Landscaper extends Unit {
 
                 // PLACE AS MUCH DIRT AS POSSIBLE, OR TO THE HEIGHT AT THE LOCATION ADJACENT
                 Direction dir = rc.getLocation().directionTo(location);
-                for (int i = 0; i < height; ++i) {
-                    if (rc.canDepositDirt(dir)) {
-                        rc.depositDirt(dir);
-                    } else {
-                        break;
+                if (height > 0) {
+                    for (int i = 0; i < height; ++i) {
+                        if (rc.canDepositDirt(dir)) {
+                            rc.depositDirt(dir);
+                        } else {
+                            break;
+                        }
+                    }
+                } else {
+                    for (int i = 0; i < height; ++i) {
+                        if (rc.canDigDirt(dir)) {
+                            rc.digDirt(dir);
+                        } else {
+                            break;
+                        }
                     }
                 }
 
                 if (height > RobotType.LANDSCAPER.dirtLimit) {
-                    buildWallAt(location, height - RobotType.LANDSCAPER.dirtLimit, directlyUnder);
+                    landscapeAt(location, height - RobotType.LANDSCAPER.dirtLimit, directlyUnder);
                 }
             }
 
             // BUILD WALL DIRECTLY BENEATH LANDSCAPER
+
+            // *** repetitive  code - don't like that ***
             else {
                 if (true)  { // travel to location
-                    for (int i = 0; i < height; ++i) {
-                        rc.depositDirt(Direction.CENTER);
+                    if (height > 0) {
+                        for (int i = 0; i < height; ++i) {
+                            rc.depositDirt(Direction.CENTER);
+                        }
+                    } else {
+                        for (int i = 0; i < height; ++i) {
+                            rc.digDirt(Direction.CENTER);
+                        }
                     }
                 } else {
                     buildPathTo(location);
-                    for (int i = 0; i < height; ++i) {
-                        rc.depositDirt(Direction.CENTER);
+                    if (height > 0) {
+                        for (int i = 0; i < height; ++i) {
+                            rc.depositDirt(Direction.CENTER);
+                        }
+                    } else {
+                        for (int i = 0; i < height; ++i) {
+                            rc.digDirt(Direction.CENTER);
+                        }
                     }
                 }
             }
+        }
+
+        else if (height == 0) {
+            return;
         }
 
         // GATHER ENOUGH DIRT TO TRY AGAIN (didn't have enough before)
         else {
             gatherDirt();
-            buildWallAt(location, height, directlyUnder);
+            landscapeAt(location, height, directlyUnder);
         }
+    }
+
+    public void digHoleAt(MapLocation location, int height, boolean directlyUnder) throws GameActionException { // Digs hole at location
+
+
     }
 
     public void buildWallAround(MapLocation location, int height) throws GameActionException { // Landscape around a building at point 'location'
@@ -86,20 +127,16 @@ class Landscaper extends Unit {
             // around the location and placing 3 dirt onto the next tile.
             // ***NOTE this does not currently account for the tiles around the location being different elevations***
             for (int i = 0; i < 8; ++i) {
-                buildWallAt(adjLocations[i], 3, true);
+                landscapeAt(adjLocations[i], 3, true);
             }
             currHeight += 3;
         }
         for (int i = 0; i < 8; ++i) {
-            buildWallAt(adjLocations[i], height-currHeight, true);
+            landscapeAt(adjLocations[i], height-currHeight, true);
         }
     }
 
     public void landscapeInShape(FastLocSet shape) throws GameActionException { // Landscape in given shape
-
-    }
-
-    public void digHoleAt(MapLocation location, int height) throws GameActionException { // Digs hole at location
 
     }
 
@@ -116,11 +153,12 @@ class Landscaper extends Unit {
             return;
         } else {
             while (rc.getLocation() != location) {
+
                 int elevationDiff = rc.senseElevation(rc.getLocation()) - rc.senseElevation(rc.getLocation().add(rc.getLocation().directionTo(location)));
                 if (elevationDiff < -3) {
                     digHoleAt(rc.getLocation().add(rc.getLocation().directionTo(location)), elevationDiff - 3);
                 } else if (elevationDiff > 3) {
-                    buildWallAt(rc.getLocation().add(rc.getLocation().directionTo(location)), elevationDiff + 3, false);
+                    landscapeAt(rc.getLocation().add(rc.getLocation().directionTo(location)), elevationDiff + 3, false);
                 }
                 rc.move(rc.getLocation().directionTo(location));
             }
