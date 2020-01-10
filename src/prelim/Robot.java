@@ -61,6 +61,10 @@ abstract class Robot {
             default: return -1;
         }
     }
+
+
+
+
     
     // Communication Code
 
@@ -68,25 +72,84 @@ abstract class Robot {
 
     // TODO
 
-
     // MID LEVEL COMMUNICATION
 
-    public static void post(byte[] message) {
-        // TODO
+    /**
+     * Post data to the block chain
+     *
+     * @param header header
+     * @param data byte array of data to encode. Max length of MAX_DATA_BYTES (currently 23)
+     * @param isHighPriority true if high priority
+     */
+    public static void post(byte header, byte[] data, boolean isHighPriority) {
+        int cost = determineCost(isHighPriority);
+        int[] encoded = encode(header, data, cost);
+
+        try {
+            rc.submitTransaction(encoded, cost);
+        } catch (GameActionException e) {
+            //TODO: Add to queue to re-post later
+        }
     }
 
-    public static void post(int[] message) {
-        // TODO
+    /**
+     * Post data to the block chain
+     *
+     * @param header header
+     * @param data int array of data to encode. Max length of MAX_DATA_INTS (currently 6)
+     * @param isHighPriority true if high priority
+     */
+    public static void post(byte header, int[] data, boolean isHighPriority) {
+        int cost = determineCost(isHighPriority);
+        int[] encoded = encode(header, data, cost);
+
+        try {
+            rc.submitTransaction(encoded, cost);
+        } catch (GameActionException e) {
+            //TODO: Add to queue to re-post later
+        }
     }
 
-    public static ArrayList<Byte[]> receiveFromLastRound() {
-        // TODO
-        return new ArrayList<>();
+    // TODO: Find good default here to determine cost for first round
+    private static int previousRoundTotalCost = 0;
+    private static int lastUpdatedPreviousRoundBlockSet = 0;
+    private static Transaction[] previousRoundBlock = new Transaction[0];
+
+    /**
+     * Update the previous round block variable to avoid calling getBlock more than once
+     */
+    public static void updatePreviousBlockRecords() {
+
+        // In round zero this if statement is purposefully skipped because no block has been released yet
+        if (lastUpdatedPreviousRoundBlockSet != rc.getRoundNum()) {
+            try {
+                previousRoundBlock = rc.getBlock(rc.getRoundNum() - 1);
+            } catch (GameActionException e) {
+                // This should never happen
+                previousRoundBlock = new Transaction[0];
+            }
+
+            //TODO: Should this code be here or in determineCost – byte code savings depend on how frequently data is posted
+            previousRoundTotalCost = 0;
+            for (Transaction t : previousRoundBlock) {
+                previousRoundTotalCost += t.getCost();
+            }
+        }
     }
 
-    private static int determineCost(int priority) {
-        // TODO: Implement
-        return 1;
+    /**
+     * Estimate the cost for a transaction to be get in the block chain
+     *
+     * @param isHighPriority true if high priority
+     * @return the approximate cost to get in the block chain
+     */
+    private static int determineCost(boolean isHighPriority) {
+        //TODO: Fix? logic here
+        if (previousRoundBlock.length < 7) {
+            return 1;
+        }
+
+        return isHighPriority ? 1 + (previousRoundTotalCost / 7) : 1 + (previousRoundTotalCost / 7);
     }
 
 
@@ -126,7 +189,7 @@ abstract class Robot {
      * @param data byte array of data to encode. Max length of MAX_DATA_BYTES (currently 23)
      * @return transaction message: array of 7 ints
      */
-    public static int[] encode(byte header, byte[] data) {
+    public static int[] encode(byte header, byte[] data, int cost) {
         int[] message = {0, 0, 0, 0, 0, 0, 0};
 
         // Data format: 4321 8765 ... HMMM CCCC
@@ -142,7 +205,7 @@ abstract class Robot {
 
         // Add security features to message
         encrypt(message);
-        addChecksum(message);
+        addChecksum(message, cost);
 
         return message;
     }
@@ -155,7 +218,7 @@ abstract class Robot {
      * @param data int array of data to encode. Max length of MAX_DATA_INTS (currently 6)
      * @return transaction message: array of 7 ints
      */
-    public static int[] encode(byte header, int[] data) {
+    public static int[] encode(byte header, int[] data, int cost) {
         int[] message = {0, 0, 0, 0, 0, 0, 0};
 
         // Add message ints
@@ -169,7 +232,7 @@ abstract class Robot {
 
         // Add security features to message
         encrypt(message);
-        addChecksum(message);
+        addChecksum(message, cost);
 
         return message;
     }
@@ -183,7 +246,7 @@ abstract class Robot {
         // TODO
     }
 
-    private static void addChecksum(int[] message) {
+    private static void addChecksum(int[] message, int cost) {
         // Not currently a real checksum.
         message[6] = COMM_CHECK;
     }
@@ -194,7 +257,7 @@ abstract class Robot {
      * @param encryptedMessage transaction message (Still encrypted)
      * @return true if message is from our team, false otherwise
      */
-    public static boolean verifyChecksum(int[] encryptedMessage) {
+    public static boolean verifyChecksum(int[] encryptedMessage, int cost) {
         return encryptedMessage[6] == COMM_CHECK;
     }
 
