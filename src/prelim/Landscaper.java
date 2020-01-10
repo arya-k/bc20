@@ -27,26 +27,8 @@ class Landscaper extends Unit {
 
             // BUILD WALL ADJACENT TO LANDSCAPER
             if (!directlyUnder) {
-                MapLocation[] adjLocations = arrayOfAdjLocations(location, location.directionTo(rc.getLocation()));
-                if (!rc.getLocation().isAdjacentTo(location)) {
-                    /*
-                        Admittedly, I don't really like how this works right now, but I'm not sure how to tell it to
-                        take a step back to an adjacent location from where it was before. As a result, it has to check
-                        possibly 8 times to see how it got up to the location it's meaning to place dirt at.
-
-                        There's always the unoptimized route of trying to have the landscaper take the direct path by
-                        making its own path, and stopping when it's adjacent to the location, but that's not entirely
-                        ideal either.
-                     */
-
-                    if (true) { // travel to location
-                        moveToAdjacentLocation(adjLocations);
-                    } else {
-                        if (!rc.getLocation().isAdjacentTo(location)) {
-                            buildPathTo(location);
-                            moveToAdjacentLocation(adjLocations);
-                        }
-                    }
+                if (! true) { // CANNOT travel to adjacent block to the location
+                    buildPathTo(location);
                 }
 
                 // PLACE AS MUCH DIRT AS POSSIBLE, OR TO THE HEIGHT AT THE LOCATION ADJACENT
@@ -114,11 +96,7 @@ class Landscaper extends Unit {
         }
     }
 
-    public void digHoleAt(MapLocation location, int height, boolean directlyUnder) throws GameActionException { // Digs hole at location
-
-
-    }
-
+    // should change this to take in an elevation?
     public void buildWallAround(MapLocation location, int height) throws GameActionException { // Landscape around a building at point 'location'
         MapLocation[] adjLocations = arrayOfAdjLocations(location, location.directionTo(rc.getLocation()));
         int currHeight = 0;
@@ -136,8 +114,11 @@ class Landscaper extends Unit {
         }
     }
 
-    public void landscapeInShape(FastLocSet shape) throws GameActionException { // Landscape in given shape
-
+    public void landscapeInShape(FastLocSet shape, int elevation) throws GameActionException { // Landscape in given shape
+        MapLocation[] locs = shape.getKeys();
+        for (int i = 0; i < shape.getSize(); ++i) { // need a get size function :(
+            
+        }
     }
 
     public void gatherDirt() throws GameActionException { // Gathers dirt from surroundings, attempting to leave paths intact
@@ -145,6 +126,10 @@ class Landscaper extends Unit {
     }
 
     public void dumpDirt() throws GameActionException { // Dumps dirt into surroundings, attempting to leave paths intact
+
+    }
+
+    public void levelArea() throws GameActionException { // Flattens all dirt to the same as the first location in a FastLocSet
 
     }
 
@@ -156,7 +141,7 @@ class Landscaper extends Unit {
 
                 int elevationDiff = rc.senseElevation(rc.getLocation()) - rc.senseElevation(rc.getLocation().add(rc.getLocation().directionTo(location)));
                 if (elevationDiff < -3) {
-                    digHoleAt(rc.getLocation().add(rc.getLocation().directionTo(location)), elevationDiff - 3);
+                    landscapeAt(rc.getLocation().add(rc.getLocation().directionTo(location)), -(elevationDiff - 3), false);
                 } else if (elevationDiff > 3) {
                     landscapeAt(rc.getLocation().add(rc.getLocation().directionTo(location)), elevationDiff + 3, false);
                 }
@@ -173,14 +158,5 @@ class Landscaper extends Unit {
             direction.rotateRight(); // not sure if we should rotate left or right
         }
         return adjLocations;
-    }
-
-    public void moveToAdjacentLocation(MapLocation[] adjLocations) throws GameActionException {
-        for (int i = 0; i < 8; ++i) {
-            if (rc.canMove(rc.getLocation().directionTo(adjLocations[i]))) {
-                rc.move(rc.getLocation().directionTo(adjLocations[i]));
-                break;
-            }
-        }
     }
 }

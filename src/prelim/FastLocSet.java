@@ -54,4 +54,8 @@ public class FastLocSet {
         keys.replace(0, keys.length(), newSet);
         size = newSet.length() / 3;
     }
+
+    public int getSize() {
+        return size;
+    }
 }
