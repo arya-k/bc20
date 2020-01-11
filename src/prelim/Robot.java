@@ -158,9 +158,6 @@ abstract class Robot {
     // The communication code below is not intended to be used by other people. It is low level communication code and I will
     // develop higher level abstractions over next few days.
 
-    // TODO: Implement actual checksum/hash
-    // Right now the verification is just checking that the last part of the message is a certain value
-
     // TODO: Meet with group to discuss messaging requirements
     // TODO: Determine standardized header system
 
@@ -179,6 +176,7 @@ abstract class Robot {
 
     // Magic number used to verify messages are from our team. Change between each tournament.
     static final int COMM_CHECK = 0x38ede937;
+    static final int[] COMM_XOR = {0xd13ed2a2, 0x66e21209, 0x1a218286, 0x7d37cd6b, 0x1a2a127c, 0x05f4bd5b};
 
     /**
      * Securely encode byte data and a header to fit in a transaction message.
@@ -206,7 +204,7 @@ abstract class Robot {
 
         // Add security features to message
         encrypt(message);
-        addChecksum(message, cost);
+        message[6] = calculateChecksum(message, cost);
 
         return message;
     }
@@ -233,23 +231,37 @@ abstract class Robot {
 
         // Add security features to message
         encrypt(message);
-        addChecksum(message, cost);
+        message[6] = calculateChecksum(message, cost);
 
         return message;
     }
 
 
     private static void encrypt(int[] message) {
-        // TODO
+        message[0] ^= COMM_XOR[0];
+        message[1] ^= COMM_XOR[1];
+        message[2] ^= COMM_XOR[2];
+        message[3] ^= COMM_XOR[3];
+        message[4] ^= COMM_XOR[4];
+        message[5] ^= COMM_XOR[5];
     }
 
     private static void decrypt(int[] message) {
-        // TODO
+        message[0] ^= COMM_XOR[0];
+        message[1] ^= COMM_XOR[1];
+        message[2] ^= COMM_XOR[2];
+        message[3] ^= COMM_XOR[3];
+        message[4] ^= COMM_XOR[4];
+        message[5] ^= COMM_XOR[5];
     }
 
-    private static void addChecksum(int[] message, int cost) {
-        // Not currently a real checksum.
-        message[6] = COMM_CHECK;
+    private static int calculateChecksum(int[] message, int cost) {
+        // Have the comm check so that a message of all zeros does not satisfy checksum
+        // Multiply so that changing the order of blocks changes the checksum
+        int sum = message[0]*3 ^ message[1]*5 ^ message[2]*7 ^ message[3]*11 ^ message[4]*13 ^ message[5]*17 ^ COMM_CHECK;
+
+        // Logic: changing any bit in the message will change two bits in the checksum
+        return sum ^ (sum >>> 16) ^ (sum << 16);
     }
 
     /**
@@ -259,7 +271,7 @@ abstract class Robot {
      * @return true if message is from our team, false otherwise
      */
     public static boolean verifyChecksum(int[] encryptedMessage, int cost) {
-        return encryptedMessage[6] == COMM_CHECK;
+        return encryptedMessage[6] != calculateChecksum(encryptedMessage, cost);
     }
 
     /**
@@ -275,7 +287,7 @@ abstract class Robot {
     public static byte decodeHeader(int[] encryptedMessage) {
         // TODO: Decrypt just the relevant header byte without modifying message
 
-        return (byte) (encryptedMessage[5] >> (BYTE_WIDTH * (INT_WIDTH - 1)));
+        return (byte) ((encryptedMessage[5] ^ COMM_XOR[5]) >> (BYTE_WIDTH * (INT_WIDTH - 1)));
     }
 
     /**
@@ -309,7 +321,7 @@ abstract class Robot {
         // Decode data encoded with format detailed in encode()
         for (int i = 0; i < length; i++) {
             decoded[i] = (byte) message[i / 4];
-            message[i / 4] >>= BYTE_WIDTH;
+            message[i / INT_WIDTH] >>= BYTE_WIDTH;
         }
 
         return decoded;
@@ -336,18 +348,6 @@ abstract class Robot {
         decoded[5] &= 0x00FFFFFF;
 
         return decoded;
-    }
-
-    /**
-     * Decode the data from a transaction message. Must be a message from our team.
-     *
-     * Instead of creating a new array, message is modified. Length will always be 7 and the last element is the checksum.
-     * This method does not remove the header, so the most significant byte of the 6th integer will be the header
-     *
-     * @param message encrypted transaction message from our team. This parameter is modified to be the decoded message.
-     */
-    public static void cheapDecodeIntData(int[] message) {
-        decrypt(message);
     }
 
 }
