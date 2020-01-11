@@ -65,7 +65,7 @@ abstract class Robot {
 
 
 
-    
+
     // Communication Code
 
     // HIGH LEVEL COMMUNICATION
@@ -197,7 +197,8 @@ abstract class Robot {
 
         // Add message bytes
         for (int i = 0; i < data.length; i++) {
-            message[i / INT_WIDTH] |= ((int) data[i]) << (BYTE_WIDTH * (i % INT_WIDTH));
+            // Need to do & 0xFF because Java tries to do a signed conversion, setting the leader 3 bytes of the int to FF if the byte is negative
+            message[i / INT_WIDTH] |= (((int) data[i]) & 0xFF) << (BYTE_WIDTH * (i % INT_WIDTH));
         }
 
         // Add header
@@ -279,9 +280,10 @@ abstract class Robot {
 
     /**
      * Decode the data from a transaction message (must be a message from our team), assuming max length.
+     * Message is irrevocably modified.
      * If the message encoded was shorter than MAX_DATA_BYTES, the remaining bytes will be 0.
      *
-     * @param message encrypted transaction message from our team
+     * @param message encrypted transaction message from our team. Message is irrevocably modified.
      * @return the decoded data
      */
     public static byte[] decodeByteData(int[] message) {
@@ -290,12 +292,13 @@ abstract class Robot {
 
     /**
      * Decode the data from a transaction message (must be a message from our team), of a known length.
+     * Message is irrevocably modified.
      * If the message encoded was shorter than length, the remaining bytes will be 0.
      *
      * Length could be known from (e.g.) already decoded header information.
      *
      * @param message encrypted transaction message from our team
-     * @param length known length of the data to be decoded
+     * @param length known length of the data to be decoded. Message is irrevocably modified.
      * @return the decoded data
      */
     public static byte[] decodeByteData(int[] message, int length) {
