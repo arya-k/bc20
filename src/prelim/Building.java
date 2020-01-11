@@ -2,6 +2,13 @@ package prelim;
 
 import battlecode.common.*;
 
+/*
+TODO(evan) Report HQ location on turn zero (maybe with max)
+           Offensive Messaging Attacks (maybe with max)
+           Spawn some miners right at the beginning
+           Spawn miners more frequently
+*/
+
 public abstract class Building extends Robot {
     private static int[][] info;
     static int[] spawnWeights;
