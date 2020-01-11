@@ -261,7 +261,7 @@ abstract class Robot {
         int sum = message[0]*3 ^ message[1]*5 ^ message[2]*7 ^ message[3]*11 ^ message[4]*13 ^ message[5]*17 ^ COMM_CHECK;
 
         // Logic: changing any bit in the message will change two bits in the checksum
-        return sum ^ (sum >>> 16) ^ (sum << 16);
+        return sum ^ (sum >>> 16) ^ (sum << 16) ^ cost;
     }
 
     /**
@@ -285,8 +285,6 @@ abstract class Robot {
      * @return the header
      */
     public static byte decodeHeader(int[] encryptedMessage) {
-        // TODO: Decrypt just the relevant header byte without modifying message
-
         return (byte) ((encryptedMessage[5] ^ COMM_XOR[5]) >> (BYTE_WIDTH * (INT_WIDTH - 1)));
     }
 
