@@ -2,15 +2,50 @@ package prelim;
 
 import battlecode.common.*;
 
-class AlwaysSafe implements NavSafetyPolicy {
+class StayAliveSafetyPolicy implements NavSafetyPolicy {
     @Override
-    public boolean isSafeToMoveTo(MapLocation loc) {
 
+    RobotController rc;
+
+    public StayAliveSafetyPolicy(RobotController rc_in) {
+        rc = rc_in;
+    }
+
+
+    /**
+     * Checks to make sure there isn't flooding or an adjacent drone to that tile
+     * @param loc to which the the unit is trying to move
+     * @return if it's safe to move to loc or not
+     * @throws GameActionException
+     */
+    public boolean isSafeToMoveTo(MapLocation loc) throws GameActionException {
+        if (rc.canSenseLocation(loc)) { // double check the location is near enough
+
+            // check that the tile isn't flooded
+            if (rc.senseFlooding(loc)) {
+                return false;
+            }
+
+            // check that the tile doesn't have a drone next to it
+            RobotInfo[] nearRobots = rc.senseNearbyRobots(1, rc.getTeam().opponent());
+            for (int i = 0; i < nearRobots.length; ++i) {
+                if (nearRobots[i].getType() == RobotType.DELIVERY_DRONE) {
+                    return false;
+                }
+            }
+
+        }
         return true;
     }
+
 }
 
 class Landscaper extends Unit {
+
+    NavSafetyPolicy nsp = new StayAliveSafetyPolicy(rc);
+    BugNav bn = new BugNav(rc, nsp);
+
+
     @Override
     public void onAwake() throws GameActionException {
         landscaped = new FastLocSet();
@@ -23,6 +58,29 @@ class Landscaper extends Unit {
 
     private static FastLocSet landscaped;
     private static FastLocSet paths;
+
+    public void travelTo(MapLocation location) throws GameActionException {
+        // travel to location
+        while (!BugNav.isStuck() && !rc.getLocation().equals(location)) {
+            BugNav.goTo(location);
+            Clock.yield();
+        }
+
+        if (!rc.getLocation().equals(location))  {
+            buildPathTo(location);
+        }
+    }
+
+    public void travelToAdj(MapLocation location) throws GameActionException {
+        while (!BugNav.isStuck() && !rc.getLocation().isAdjacentTo(location)) {
+            BugNav.goTo(location);
+            Clock.yield();
+        }
+
+        if (!rc.getLocation().isAdjacentTo(location)) {
+            buildPathTo(location);
+        }
+    }
 
 
     /**
@@ -54,9 +112,8 @@ class Landscaper extends Unit {
 
             // BUILD WALL ADJACENT TO LANDSCAPER
             if (!directlyUnder) {
-                if (! true) { // CANNOT travel to adjacent block to the location
-                    buildPathTo(location);
-                }
+
+                travelToAdj(location);
 
                 // PLACE AS MUCH DIRT AS POSSIBLE, OR TO THE HEIGHT AT THE LOCATION ADJACENT
                 Direction dir = rc.getLocation().directionTo(location);
@@ -69,7 +126,7 @@ class Landscaper extends Unit {
                         }
                     }
                 } else {
-                    for (int i = 0; i < height; ++i) {
+                    for (int i = 0; i < -height; ++i) {
                         if (rc.canDigDirt(dir)) {
                             rc.digDirt(dir);
                         } else {
@@ -85,16 +142,15 @@ class Landscaper extends Unit {
 
             // BUILD WALL DIRECTLY BENEATH LANDSCAPER
             else {
-                if (! true)  { // travel to location
-                    buildPathTo(location);
 
-                }
+                travelTo(location);
+
                 if (height > 0) {
                     for (int i = 0; i < height; ++i) {
                         rc.depositDirt(Direction.CENTER);
                     }
                 } else {
-                    for (int i = 0; i < height; ++i) {
+                    for (int i = 0; i < -height; ++i) {
                         rc.digDirt(Direction.CENTER);
                     }
                 }
@@ -125,14 +181,10 @@ class Landscaper extends Unit {
     public void landscapeToElevation(MapLocation location, int elevation, boolean directlyUnder) throws GameActionException {
         if (!rc.canSenseLocation(location)) {
             if (directlyUnder) {
-                if (!true) { // travel to location
-                    buildPathTo(location);
-                }
+                travelTo(location);
 
             } else {
-                if (!true) { // travel to tile adjacent to location
-                    buildPathTo(location.add(location.directionTo(rc.getLocation())));
-                }
+                travelToAdj(location);
             }
         }
 
@@ -202,9 +254,7 @@ class Landscaper extends Unit {
     public void levelArea(FastLocSet shape) throws GameActionException {
         MapLocation[] locs = shape.getKeys();
         if (!rc.canSenseLocation(locs[0])) {
-            if (! true) { // travel to location adjacent to
-                buildPathTo(locs[0].add(locs[0].directionTo(rc.getLocation())));
-            }
+            travelToAdj(locs[0]);
         }
         int elevation = rc.senseElevation(locs[0]);
         for (int i = 0; i < shape.getSize(); ++i) {
@@ -222,7 +272,12 @@ class Landscaper extends Unit {
      * @throws GameActionException
      */
     public void buildPathTo(MapLocation location) throws GameActionException {
-        if (! true) { // if landscaper can already reach that location -- using the pathfinding function
+        while (!BugNav.isStuck() && !rc.getLocation().equals(location)) {
+            BugNav.goTo(location);
+            Clock.yield();
+        }
+
+        if (!rc.getLocation().equals(location))  {
             while (!rc.getLocation().equals(location)) {
                 paths.add(rc.getLocation());
                 // positive if the following tile is higher than the current tile
