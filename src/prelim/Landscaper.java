@@ -111,8 +111,8 @@ class Landscaper extends Unit {
         // WHEN THE LANDSCAPER HAS ENOUGH DIRT OR AS MUCH AS IT CAN HAVE
         if (height > 0 && (rc.getDirtCarrying() >= height ||
                     (height > RobotType.LANDSCAPER.dirtLimit && rc.getDirtCarrying() == RobotType.LANDSCAPER.dirtLimit)) ||
-            height < 0 && (RobotType.LANDSCAPER.dirtLimit - rc.getDirtCarrying() > -height ||
-                    (-height > RobotType.LANDSCAPER.dirtLimit && rc.getDirtCarrying() == 0))) {
+            (height < 0 && (RobotType.LANDSCAPER.dirtLimit - rc.getDirtCarrying() > -height ||
+                (-height > RobotType.LANDSCAPER.dirtLimit && rc.getDirtCarrying() == 0)))) {
 
             // BUILD WALL ADJACENT TO LANDSCAPER
             if (!directlyUnder) {
