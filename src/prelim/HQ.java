@@ -4,7 +4,7 @@ import battlecode.common.*;
 
 class HQ extends Building {
     static RobotType spawnType = RobotType.MINER;
-    static int spawnTick = 0;
+    static int spawnTick = -1;
 
     @Override
     public void onAwake() throws GameActionException {
