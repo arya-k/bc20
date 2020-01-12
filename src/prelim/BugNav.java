@@ -20,9 +20,11 @@ interface NavSafetyPolicy {
  *
  *  Example Usage:
  *  MapLocation target = new MapLocation(0,0);
- *  NavSafetyPolicy nsp = new AvoidAllUnitsSafetyPolicy(enemy_hq_loc);
- *  while (BugNav.goTo(target, nsp)) {
- *      rc.yield(); // BugNav.goTo returns true when an action was taken.
+ *  NavSafetyPolicy nsp = new AvoidEnemiesInclHQSafetyPolicy(rc, enemy_hq_loc);
+ *  BugNav bugNav = new BugNav(rc, nsp);
+ *  while (!rc.getLocation().equals(target) && !bn.isStuck()) {
+ *      bugNav.goTo(target);
+ *      Clock.yield();
  *  }
  *  /* you will either be at the destination, or bug will have failed
  */
@@ -43,19 +45,23 @@ public class BugNav {
     private static int bugRotationCount; // TODO: what is this
     private static int bugMovesSinceSeenObstacle; // to determine when to stop bugging
 
-    public BugNav(RobotController rc) {
+    public BugNav(RobotController rc, NavSafetyPolicy safety) {
         BugNav.rc = rc;
+        BugNav.safety = safety;
+    }
+
+    public static boolean isStuck() {
+        return false; // TODO: change this, because it is possible to get stuck.
     }
 
     /**
      * Try to move towards a target destination.
      * @param destIn target destination
-     * @param safetyIn safety policy to take
      * @throws GameActionException
      */
-    public static void goTo(MapLocation destIn, NavSafetyPolicy safetyIn) throws GameActionException {
-        if (!rc.isReady()) {
-            return; // Robot can't do any actions this turn.
+    public static void goTo(MapLocation destIn) throws GameActionException {
+        if (!rc.isReady() || rc.getLocation().equals(destIn)) {
+            return; // Robot can't do any actions this turn OR we have arrived.
         }
 
         if (!destIn.equals(dest)) {
@@ -63,13 +69,6 @@ public class BugNav {
             bugState = BugState.DIRECT;
         }
 
-        if (rc.getLocation().equals(destIn)) {
-            return; // we have arrived- no more actions need to be taken.
-        }
-
-        safety = safetyIn;
-
-        /* TODO: SMARTER BUGGING ENDING HERE */
         bugMove();
     }
 

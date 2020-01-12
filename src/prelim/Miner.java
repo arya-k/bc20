@@ -10,17 +10,22 @@ class AlwaysSafeLolz implements NavSafetyPolicy {
 }
 
 class Miner extends Unit {
-    NavSafetyPolicy nsp = new AlwaysSafeLolz();
-    BugNav bn = new BugNav(rc);
+    NavSafetyPolicy nsp;
+    BugNav bn;
 
     @Override
     public void onAwake() throws GameActionException {
         System.out.println("I'm an Miner!");
+        nsp = new AlwaysSafeLolz();
+        bn = new BugNav(rc, nsp);
     }
 
     @Override
     public void onUpdate() throws GameActionException {
-        bn.goTo(new MapLocation(0, 0), nsp);
+        MapLocation target = new MapLocation(0,0);
+        if (!rc.getLocation().equals(target) && !bn.isStuck()) {
+            bn.goTo(target);
+        }
         Clock.yield();
     }
 }
