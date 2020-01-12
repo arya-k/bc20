@@ -3,14 +3,11 @@ package prelim;
 import battlecode.common.*;
 
 class StayAliveSafetyPolicy implements NavSafetyPolicy {
-    @Override
-
     RobotController rc;
 
     public StayAliveSafetyPolicy(RobotController rc_in) {
         rc = rc_in;
     }
-
 
     /**
      * Checks to make sure there isn't flooding or an adjacent drone to that tile
@@ -18,6 +15,7 @@ class StayAliveSafetyPolicy implements NavSafetyPolicy {
      * @return if it's safe to move to loc or not
      * @throws GameActionException
      */
+    @Override
     public boolean isSafeToMoveTo(MapLocation loc) throws GameActionException {
         if (rc.canSenseLocation(loc)) { // double check the location is near enough
 
@@ -50,6 +48,12 @@ class Landscaper extends Unit {
     public void onAwake() throws GameActionException {
         landscaped = new FastLocSet();
         paths = new FastLocSet();
+
+        travelTo(new MapLocation(36, 16));
+        travelToAdj(new MapLocation(32, 5));
+        landscapeAt(new MapLocation(36, 7), -24, false);
+        buildWallAround(new MapLocation(38, 12), 6);
+
     }
 
     @Override
@@ -107,7 +111,7 @@ class Landscaper extends Unit {
         // WHEN THE LANDSCAPER HAS ENOUGH DIRT OR AS MUCH AS IT CAN HAVE
         if (height > 0 && (rc.getDirtCarrying() >= height ||
                     (height > RobotType.LANDSCAPER.dirtLimit && rc.getDirtCarrying() == RobotType.LANDSCAPER.dirtLimit)) ||
-            height < 0 && (RobotType.LANDSCAPER.dirtLimit - rc.getDirtCarrying() > height ||
+            height < 0 && (RobotType.LANDSCAPER.dirtLimit - rc.getDirtCarrying() > -height ||
                     (height > RobotType.LANDSCAPER.dirtLimit && rc.getDirtCarrying() == 0))) {
 
             // BUILD WALL ADJACENT TO LANDSCAPER

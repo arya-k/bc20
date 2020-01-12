@@ -8,7 +8,7 @@ import battlecode.common.*;
  * whether it is safe to visit a certain location.
  */
 interface NavSafetyPolicy {
-    public boolean isSafeToMoveTo(MapLocation loc);
+    public boolean isSafeToMoveTo(MapLocation loc) throws GameActionException;
 }
 
 /**
@@ -153,7 +153,7 @@ public class BugNav {
      * @param dir the direction to move in
      * @return safe (yes/no)
      */
-    private static boolean canMove(Direction dir) {
+    private static boolean canMove(Direction dir) throws GameActionException {
         return rc.canMove(dir) && safety.isSafeToMoveTo(rc.getLocation().add(dir));
     }
 
@@ -162,7 +162,7 @@ public class BugNav {
      * keeps track of distance to target, direction we've moved
      * in, whether we've rotated multiple times, etc...
      */
-    private static void startBug() {
+    private static void startBug() throws GameActionException {
         bugStartDistSq = rc.getLocation().distanceSquaredTo(dest);
         bugLastMoveDir = rc.getLocation().directionTo(dest);
         bugLookStartDir = rc.getLocation().directionTo(dest);
@@ -223,7 +223,7 @@ public class BugNav {
      * Reverse directions because we have hit the map
      * involves resetting the bug distances.
      */
-    private static void reverseBugWallFollowDir() {
+    private static void reverseBugWallFollowDir() throws GameActionException {
         bugWallSide = (bugWallSide == WallSide.LEFT ? WallSide.RIGHT : WallSide.LEFT);
         startBug();
     }
@@ -233,7 +233,7 @@ public class BugNav {
      * the wall in the proper direction
      * @return the direction to move in
      */
-    public static Direction findBugMoveDir() {
+    public static Direction findBugMoveDir() throws GameActionException {
         bugMovesSinceSeenObstacle++;
         Direction dir = bugLookStartDir;
         for (int i = 8; i-- > 0;) { // #bytecodeOptimized :)
