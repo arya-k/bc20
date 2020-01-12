@@ -25,7 +25,7 @@ class StayAliveSafetyPolicy implements NavSafetyPolicy {
             }
 
             // check that the tile doesn't have a drone next to it
-            RobotInfo[] nearRobots = rc.senseNearbyRobots(1, rc.getTeam().opponent());
+            RobotInfo[] nearRobots = rc.senseNearbyRobots(2, rc.getTeam().opponent());
             for (int i = 0; i < nearRobots.length; ++i) {
                 if (nearRobots[i].getType() == RobotType.DELIVERY_DRONE) {
                     return false;
@@ -49,10 +49,11 @@ class Landscaper extends Unit {
         landscaped = new FastLocSet();
         paths = new FastLocSet();
 
-        travelTo(new MapLocation(36, 16));
-        travelToAdj(new MapLocation(32, 5));
-        landscapeAt(new MapLocation(36, 7), -24, false);
-        buildWallAround(new MapLocation(38, 12), 6);
+        landscapeAt(new MapLocation(33, 26), -25, false);
+        buildWallAround(new MapLocation(36, 22), 3, 4);
+//        landscapeAt(new MapLocation(35, 21), 9, true);
+//        buildPathTo(new MapLocation(36, 25));
+        //travelTo(new MapLocation(36, 25));
 
     }
 
@@ -110,9 +111,9 @@ class Landscaper extends Unit {
 
         // WHEN THE LANDSCAPER HAS ENOUGH DIRT OR AS MUCH AS IT CAN HAVE
         if (height > 0 && (rc.getDirtCarrying() >= height ||
-                    (height > RobotType.LANDSCAPER.dirtLimit && rc.getDirtCarrying() == RobotType.LANDSCAPER.dirtLimit)) ||
+                    (height >= RobotType.LANDSCAPER.dirtLimit && rc.getDirtCarrying() == RobotType.LANDSCAPER.dirtLimit)) ||
             (height < 0 && (RobotType.LANDSCAPER.dirtLimit - rc.getDirtCarrying() > -height ||
-                (-height > RobotType.LANDSCAPER.dirtLimit && rc.getDirtCarrying() == 0)))) {
+                (-height >= RobotType.LANDSCAPER.dirtLimit && rc.getDirtCarrying() == 0)))) {
 
             // BUILD WALL ADJACENT TO LANDSCAPER
             if (!directlyUnder) {
@@ -123,21 +124,19 @@ class Landscaper extends Unit {
                 Direction dir = rc.getLocation().directionTo(location);
                 if (height > 0) {
                     for (int i = 0; i < height; ++i) {
-                        if (rc.canDepositDirt(dir)) {
-                            rc.depositDirt(dir);
+                        while (!rc.canDepositDirt(dir)) {
                             Clock.yield();
-                        } else {
-                            break;
                         }
+                        rc.depositDirt(dir);
+                        Clock.yield();
                     }
                 } else {
                     for (int i = 0; i < -height; ++i) {
-                        if (rc.canDigDirt(dir)) {
-                            rc.digDirt(dir);
+                        while (!rc.canDigDirt(dir)) {
                             Clock.yield();
-                        } else {
-                            break;
                         }
+                        rc.digDirt(dir);
+                        Clock.yield();
                     }
                 }
 
@@ -148,26 +147,24 @@ class Landscaper extends Unit {
 
             // BUILD WALL DIRECTLY BENEATH LANDSCAPER
             else {
-
                 travelTo(location);
 
                 if (height > 0) {
                     for (int i = 0; i < height; ++i) {
-                        if (rc.canDepositDirt(Direction.CENTER)) {
-                            rc.depositDirt(Direction.CENTER);
+                        while (!rc.canDepositDirt(Direction.CENTER)) {
                             Clock.yield();
-                        } else {
-                            break;
                         }
+                        rc.depositDirt(Direction.CENTER);
+                        Clock.yield();
+
                     }
                 } else {
                     for (int i = 0; i < -height; ++i) {
-                        if (rc.canDigDirt(Direction.CENTER)) {
-                            rc.digDirt(Direction.CENTER);
+                        while (!rc.canDigDirt(Direction.CENTER)) {
                             Clock.yield();
-                        } else {
-                            break;
                         }
+                        rc.digDirt(Direction.CENTER);
+                        Clock.yield();
                     }
                 }
             }
@@ -215,8 +212,8 @@ class Landscaper extends Unit {
      * @param elevation of the walls
      * @throws GameActionException
      */
-    public void buildWallAround(MapLocation location, int elevation) throws GameActionException {
-        FastLocSet locs = arrayOfAdjLocations(location, location.directionTo(rc.getLocation()));
+    public void buildWallAround(MapLocation location, int distanceFromPoint, int elevation) throws GameActionException {
+        FastLocSet locs = arrayOfAdjLocations(location, location.directionTo(rc.getLocation()), distanceFromPoint);
         MapLocation[] adjLocations = locs.getKeys();
 
         // first levels the area so that it's all consistently at the same elevation, speeding up the next process
@@ -227,12 +224,12 @@ class Landscaper extends Unit {
             // in order to avoid the landscaper trying to find the optimal adjacent location, it instead builds directly under itself while going
             // around the location and placing 3 dirt onto the next tile.
 
-            for (int i = 0; i < 8; ++i) {
+            for (int i = 0; i < locs.getSize(); ++i) {
                 landscapeAt(adjLocations[i], 3, true);
             }
             currHeight += 3;
         }
-        for (int i = 0; i < 8; ++i) {
+        for (int i = 0; i < locs.getSize(); ++i) {
             landscapeAt(adjLocations[i], height-currHeight, true);
         }
     }
@@ -288,33 +285,33 @@ class Landscaper extends Unit {
      * @throws GameActionException
      */
     public void buildPathTo(MapLocation location) throws GameActionException {
-        while (!BugNav.isStuck() && !rc.getLocation().equals(location)) {
-            BugNav.goTo(location);
-            Clock.yield();
-        }
+//        while (!BugNav.isStuck() && !rc.getLocation().equals(location)) {
+//            BugNav.goTo(location);
+//            Clock.yield();
+//        }
 
-        if (!rc.getLocation().equals(location))  {
-            while (!rc.getLocation().equals(location)) {
-                paths.add(rc.getLocation());
-                // positive if the following tile is higher than the current tile
-                int elevationDiff = rc.senseElevation(rc.getLocation().add(rc.getLocation().directionTo(location))) - rc.senseElevation(rc.getLocation());
 
-                //make sure that the landscaper won't run straight into water
-                if (!rc.senseFlooding(rc.getLocation().add(rc.getLocation().directionTo(location)))) {
-                    if (elevationDiff < -3) {
-                        landscapeAt(rc.getLocation().add(rc.getLocation().directionTo(location)), elevationDiff + 3, false);
-                    } else if (elevationDiff > 3) {
-                        landscapeAt(rc.getLocation().add(rc.getLocation().directionTo(location)), elevationDiff - 3, false);
-                    }
-                    if (rc.canMove(rc.getLocation().directionTo(location))) {
-                        rc.move(rc.getLocation().directionTo(location));
-                    }
+        while (!rc.getLocation().equals(location)) {
+            paths.add(rc.getLocation());
+            // positive if the following tile is higher than the current tile
+            int elevationDiff = rc.senseElevation(rc.getLocation().add(rc.getLocation().directionTo(location))) - rc.senseElevation(rc.getLocation());
+
+            //make sure that the landscaper won't run straight into water
+            if (!rc.senseFlooding(rc.getLocation().add(rc.getLocation().directionTo(location)))) {
+                if (elevationDiff < -3) {
+                    landscapeAt(rc.getLocation().add(rc.getLocation().directionTo(location)), -(elevationDiff + 3), false);
+                } else if (elevationDiff > 3) {
+                    landscapeAt(rc.getLocation().add(rc.getLocation().directionTo(location)), -(elevationDiff - 3), false);
                 }
-                else {
-                    landscapeAt(rc.getLocation().add(rc.getLocation().directionTo(location)), elevationDiff - 3, false);
+                if (rc.canMove(rc.getLocation().directionTo(location))) {
+                    rc.move(rc.getLocation().directionTo(location));
                 }
             }
+            else {
+                landscapeAt(rc.getLocation().add(rc.getLocation().directionTo(location)), elevationDiff - 3, false);
+            }
         }
+
     }
 
 
@@ -322,15 +319,34 @@ class Landscaper extends Unit {
      * Creates a FastLocSet of adjacent locations to a certain point
      * @param location of the tile the locations are centered around
      * @param direction that it'll start in
+     * @param distanceFromPoint that the wall should be from location
      * @return the FastLocSet of locations
      * @throws GameActionException
      */
-    public FastLocSet arrayOfAdjLocations(MapLocation location, Direction direction) throws GameActionException {
-        // Returns an FastLocSet of MapLocations surrounding a certain point
+    public FastLocSet arrayOfAdjLocations(MapLocation location, Direction direction, int distanceFromPoint) throws GameActionException {
+        // Returns a FastLocSet of MapLocations surrounding a certain point from a certain distance
         FastLocSet adjLocations = new FastLocSet();
+        MapLocation currLoc;
+
         for (int i = 0; i < 8; ++i) {
-            adjLocations.add(location.add(direction));
-            direction.rotateRight(); // not sure if we should rotate left or right
+            currLoc = location;
+            for (int j = 0; j < distanceFromPoint; ++j) {
+                currLoc = currLoc.add(direction);
+            }
+            if (i > 0 && distanceFromPoint > 1) {
+                MapLocation midLoc = adjLocations.getKeys()[adjLocations.getSize()-1];
+                for (int k = 0; k < distanceFromPoint-1; ++k) {
+                    midLoc = midLoc.add(midLoc.directionTo(currLoc));
+                    adjLocations.add(midLoc);
+                }
+            }
+            adjLocations.add(currLoc);
+            direction = direction.rotateRight(); // not sure if we should rotate left or right
+        }
+        MapLocation midLoc = adjLocations.getKeys()[adjLocations.getSize()-1];
+        for (int k = 0; k < distanceFromPoint-1; ++k) {
+            midLoc = midLoc.add(midLoc.directionTo(adjLocations.getKeys()[0]));
+            adjLocations.add(midLoc);
         }
         return adjLocations;
     }
