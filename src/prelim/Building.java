@@ -5,6 +5,9 @@ import battlecode.common.*;
 /*
 TODO(evan) Report HQ location on turn zero (maybe with max)
            Offensive Messaging Attacks (maybe with max)
+           Add Docstrings
+           Building spawning of troops isn't very effective- we need it more immediate after
+             a building is created.
 */
 
 public abstract class Building extends Robot {
