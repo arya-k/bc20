@@ -125,6 +125,7 @@ class Landscaper extends Unit {
                     for (int i = 0; i < height; ++i) {
                         if (rc.canDepositDirt(dir)) {
                             rc.depositDirt(dir);
+                            Clock.yield();
                         } else {
                             break;
                         }
@@ -133,6 +134,7 @@ class Landscaper extends Unit {
                     for (int i = 0; i < -height; ++i) {
                         if (rc.canDigDirt(dir)) {
                             rc.digDirt(dir);
+                            Clock.yield();
                         } else {
                             break;
                         }
@@ -151,11 +153,21 @@ class Landscaper extends Unit {
 
                 if (height > 0) {
                     for (int i = 0; i < height; ++i) {
-                        rc.depositDirt(Direction.CENTER);
+                        if (rc.canDepositDirt(Direction.CENTER)) {
+                            rc.depositDirt(Direction.CENTER);
+                            Clock.yield();
+                        } else {
+                            break;
+                        }
                     }
                 } else {
                     for (int i = 0; i < -height; ++i) {
-                        rc.digDirt(Direction.CENTER);
+                        if (rc.canDigDirt(Direction.CENTER)) {
+                            rc.digDirt(Direction.CENTER);
+                            Clock.yield();
+                        } else {
+                            break;
+                        }
                     }
                 }
             }
