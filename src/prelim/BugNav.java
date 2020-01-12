@@ -231,7 +231,6 @@ public class BugNav {
         bugWallSide = (bugWallSide == WallSide.LEFT ? WallSide.RIGHT : WallSide.LEFT);
         stuck = flippoints.contains(rc.getLocation());
         flippoints.add(rc.getLocation());
-        rc.setIndicatorDot(rc.getLocation(), 255,0, 0);
         startBug();
     }
 
