@@ -34,7 +34,7 @@ public class FastLocSet {
     }
 
     public boolean contains(MapLocation loc) {
-        return keys.indexOf(locToStr(loc)) == -1;
+        return keys.indexOf(locToStr(loc)) != -1;
     }
 
     public void clear() {
