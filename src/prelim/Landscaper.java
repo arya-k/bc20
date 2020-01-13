@@ -50,7 +50,7 @@ class Landscaper extends Unit {
         gatherDump = new FastLocSet();
 
         landscapeAt(new MapLocation(33, 26), -50, false);
-//        buildWallAround(new MapLocation(33, 33), 2, 8);
+        buildWallAround(new MapLocation(33, 33), 1, 15);
 //        landscapeAt(new MapLocation(35, 21), 9, true);
 //        buildPathTo(new MapLocation(36, 25));
         //travelTo(new MapLocation(36, 25));
@@ -162,9 +162,7 @@ class Landscaper extends Unit {
             landscapeAt(location, height, directlyUnder);
         }
 
-        System.out.println("it got here");
         if (-height > RobotType.LANDSCAPER.dirtLimit) {
-            System.out.println("the robot now has to go and dump dirt before it can gather more");
             landscapeAt(location, height + RobotType.LANDSCAPER.dirtLimit, directlyUnder);
         }
         else if (height > RobotType.LANDSCAPER.dirtLimit) {
@@ -236,12 +234,25 @@ class Landscaper extends Unit {
      * @throws GameActionException
      */
     public void landscapeInShape(FastLocSet shape, int elevation) throws GameActionException { // Landscape in given shape
-//        MapLocation[] locs = shape.getKeys();
-//        for (int i = 0; i < shape.getSize(); ++i) {
-//
-//        }
+        MapLocation[] locs = shape.getKeys();
+        MapLocation nearest;
+        for (int i = 0; i < shape.getSize(); ++i) {
+            nearest = nearestLoc(shape);
+            landscapeToElevation(nearest, elevation, false);
+        }
     }
 
+
+    public void buildHQMoat(MapLocation location) throws GameActionException {
+
+    }
+
+
+    /**
+     * Searches all points 'distance' away from curr loc. If all points are landscaped (in the special arrays) try distance + 1
+     * @param distance away from the landscaper's position that will be checked
+     * @throws GameActionException
+     */
     public void gatherDirt(int distance) throws GameActionException { // Gathers dirt from surroundings, attempting to leave paths intact
         /*
         search all points 'distance' away from curr loc. if no locations are found that aren't in the special arrays, try distance + 1
@@ -262,6 +273,12 @@ class Landscaper extends Unit {
 
     }
 
+
+    /**
+     * Searches all points 'distance' away from curr loc. If all points are landscaped (in the special arrays) try distance + 1
+     * @param distance away from the landscaper's position that will be checked
+     * @throws GameActionException
+     */
     public void dumpDirt(int distance) throws GameActionException { // Dumps dirt into surroundings, attempting to leave paths intact
         FastLocSet locs = setOfAdjLocations(rc.getLocation(), Direction.SOUTH, distance);
         MapLocation[] keys = locs.getKeys();
