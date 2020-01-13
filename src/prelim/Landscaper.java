@@ -50,7 +50,7 @@ class Landscaper extends Unit {
         paths = new FastLocSet();
 
         landscapeAt(new MapLocation(33, 26), -25, false);
-        buildWallAround(new MapLocation(36, 22), 3, 4);
+        buildWallAround(new MapLocation(33, 33), 2, 8);
 //        landscapeAt(new MapLocation(35, 21), 9, true);
 //        buildPathTo(new MapLocation(36, 25));
         //travelTo(new MapLocation(36, 25));
@@ -105,7 +105,9 @@ class Landscaper extends Unit {
             avoid gathering or dumping dirt on those areas later. Should maybe set a height limit, as this will take into account
             every single path landscaped, but that also might be good to preserve. Too excessive?
          */
+        System.out.println("landscaping at " + location);
         if (!landscaped.contains(location)) {
+            System.out.println("adding " + location + " to landscaped FastLocSet");
             landscaped.add(location);
         }
 
@@ -173,9 +175,9 @@ class Landscaper extends Unit {
         // GATHER ENOUGH DIRT OR DUMP DIRT TO TRY AGAIN (didn't have enough (space) before)
         else if (height != 0) {
             if (height > 0) {
-                gatherDirt();
+                gatherDirt(1);
             } else {
-                dumpDirt();
+                dumpDirt(1);
             }
             landscapeAt(location, height, directlyUnder);
         }
@@ -213,11 +215,14 @@ class Landscaper extends Unit {
      * @throws GameActionException
      */
     public void buildWallAround(MapLocation location, int distanceFromPoint, int elevation) throws GameActionException {
-        FastLocSet locs = arrayOfAdjLocations(location, location.directionTo(rc.getLocation()), distanceFromPoint);
+        FastLocSet locs = setOfAdjLocations(location, location.directionTo(rc.getLocation()), distanceFromPoint);
         MapLocation[] adjLocations = locs.getKeys();
 
         // first levels the area so that it's all consistently at the same elevation, speeding up the next process
         levelArea(locs);
+        if (!rc.canSenseLocation(adjLocations[0])) {
+            travelTo(adjLocations[0]);
+        }
         int height = elevation - rc.senseElevation(adjLocations[0]);
         int currHeight = 0;
         while (currHeight < height-3) {
@@ -248,14 +253,39 @@ class Landscaper extends Unit {
 //        }
     }
 
-    public void gatherDirt() throws GameActionException { // Gathers dirt from surroundings, attempting to leave paths intact
-        //it would be best to take this dirt from the really deep water, as there's no way we'll want to fill that up anyway
-        // but how to get there?
+    public void gatherDirt(int distance) throws GameActionException { // Gathers dirt from surroundings, attempting to leave paths intact
+        /*
+        search all points 'distance' away from curr loc. if no locations are found that aren't in the special arrays, try distance + 1
+
+         */
+        FastLocSet locs = setOfAdjLocations(rc.getLocation(), Direction.SOUTH, distance);
+        System.out.println("FastLocSet gotten for distance of " + distance);
+        MapLocation[] keys = locs.getKeys();
+
+        for (int i = 0; i < locs.getSize(); ++i) {
+            if (!landscaped.contains(keys[i]) && !paths.contains(keys[i])) {
+                System.out.println("tried to landscape at " + keys[i]);
+                landscapeAt(keys[i], -(RobotType.LANDSCAPER.dirtLimit-rc.getDirtCarrying()), false);
+                landscaped.remove(keys[i]);
+                return;
+            }
+        }
+        gatherDirt(distance + 1);
 
     }
 
-    public void dumpDirt() throws GameActionException { // Dumps dirt into surroundings, attempting to leave paths intact
+    public void dumpDirt(int distance) throws GameActionException { // Dumps dirt into surroundings, attempting to leave paths intact
+        FastLocSet locs = setOfAdjLocations(rc.getLocation(), Direction.SOUTH, distance);
+        MapLocation[] keys = locs.getKeys();
 
+        for (int i = 0; i < locs.getSize(); ++i) {
+            if (!landscaped.contains(keys[i]) && !paths.contains(keys[i])) {
+                landscapeAt(keys[i], rc.getDirtCarrying(), false);
+                landscaped.remove(keys[i]);
+                return;
+            }
+        }
+        gatherDirt(distance + 1);
     }
 
 
@@ -281,6 +311,7 @@ class Landscaper extends Unit {
      *
      * it might be good to find the optimal path, but i'm not currently sure how to do that.
      * maybe test the left and right elevations also to see what they're like?
+     *
      * @param location of the tile the landscaper is building towards
      * @throws GameActionException
      */
@@ -323,7 +354,7 @@ class Landscaper extends Unit {
      * @return the FastLocSet of locations
      * @throws GameActionException
      */
-    public FastLocSet arrayOfAdjLocations(MapLocation location, Direction direction, int distanceFromPoint) throws GameActionException {
+    public FastLocSet setOfAdjLocations(MapLocation location, Direction direction, int distanceFromPoint) throws GameActionException {
         // Returns a FastLocSet of MapLocations surrounding a certain point from a certain distance
         FastLocSet adjLocations = new FastLocSet();
         MapLocation currLoc;
@@ -350,4 +381,29 @@ class Landscaper extends Unit {
         }
         return adjLocations;
     }
+
+
+    /**
+     * computes and returns the nearest location to the current loc
+     * @param locs FastLocSet of locations to check
+     * @return the nearest location to the current loc
+     * @throws GameActionException
+     */
+    public MapLocation nearestLoc(FastLocSet locs) throws GameActionException {
+        MapLocation[] keys = locs.getKeys();
+
+        int nearestDist = keys[0].distanceSquaredTo(rc.getLocation());
+        MapLocation nearest = keys[0];
+
+        for (int i = 1; i < locs.getSize(); ++i) {
+            if (keys[i].distanceSquaredTo(rc.getLocation()) < nearestDist) {
+                nearestDist = keys[i].distanceSquaredTo(rc.getLocation());
+                nearest = keys[i];
+            }
+        }
+
+        return nearest;
+    }
 }
+
+
