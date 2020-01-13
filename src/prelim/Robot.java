@@ -3,6 +3,7 @@ import battlecode.common.*;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Map;
 
 abstract class Robot {
     static RobotController rc = null;
@@ -70,7 +71,103 @@ abstract class Robot {
 
     // HIGH LEVEL COMMUNICATION
 
-    // TODO
+
+    final static byte globalStatusHeader = 0b00000000;
+
+//    final static byte soupLocationHeader = 0b00000001;
+//
+//    public static void postSoupLocation(MapLocation ml, int amount) {
+//
+//    }
+//
+//    public static void updateSoupLocations() {
+//
+//    }
+//
+//
+//    public static class SoupLocation {
+//        byte amount;
+//        MapLocation location;
+//    }
+
+    public static class Symmetry {
+        byte Unknown = 0;
+        byte Horizontal = 0b00000001;
+        byte Vertical =   0b00000010;
+        byte Rotational = 0b00000100;
+    }
+
+    public static class GlobalStatus {
+
+        // Assuming 2 bytes at most, max of 65536
+        int roundUpdated = 0;
+
+        byte symmetry = 0;
+
+        // 12 bits each, 3 bytes together
+        MapLocation ourHQ = null;
+        MapLocation enemyHQ = null;
+
+
+        int otherInformationAbbyMightWant = 0;
+        int otherInformationAryaMightWant = 0;
+        int otherInformationEvanMightWant = 0;
+
+    }
+
+
+    public static GlobalStatus globalStatus = new GlobalStatus();
+    public static final int ROUNDS_VALID = 10;
+
+    private static void updateGlobalStatus(int[] message) {
+
+        if (message[5] + ROUNDS_VALID < rc.getRoundNum()) {
+            return;
+        }
+
+        globalStatus.roundUpdated = message[5];
+
+        if (globalStatus.ourHQ == null && (message[0] & 0x10000000) != 0) {
+            globalStatus.ourHQ = new MapLocation(message[0] & 0b111111, (message[0]>>6) & 0b111111);
+        }
+
+        if (globalStatus.enemyHQ == null && (message[0] & 0x20000000) != 0) {
+            globalStatus.enemyHQ = new MapLocation((message[0]>>12) & 0b111111, (message[0]>>18) & 0b111111);
+        }
+
+        globalStatus.otherInformationAbbyMightWant = message[1];
+        globalStatus.otherInformationAryaMightWant = message[2];
+        globalStatus.otherInformationEvanMightWant = message[3];
+
+        globalStatus.symmetry = (byte) (message[6] & 0xFF);
+
+    }
+
+    public static void postGlobalStatus() throws GameActionException {
+        int locationData = 0;
+        if (globalStatus.ourHQ != null) {
+            locationData |= 0x10000000;
+            locationData |= globalStatus.ourHQ.x & 0b111111;
+            locationData |= (globalStatus.ourHQ.y & 0b111111) << 6;
+        }
+
+        if (globalStatus.enemyHQ != null) {
+            locationData |= 0x20000000;
+            locationData |= (globalStatus.enemyHQ.x & 0b111111) << 12;
+            locationData |= (globalStatus.enemyHQ.y & 0b111111) << 18;
+        }
+
+
+        int[] message = {locationData,
+                globalStatus.otherInformationAbbyMightWant,
+                globalStatus.otherInformationAryaMightWant,
+                globalStatus.otherInformationEvanMightWant,
+                globalStatus.roundUpdated,
+                ((int) globalStatus.symmetry) & 0xFF};
+
+        Robot.post(globalStatusHeader, message, false);
+
+    }
 
     // MID LEVEL COMMUNICATION
 
@@ -81,33 +178,36 @@ abstract class Robot {
      * @param data byte array of data to encode. Max length of MAX_DATA_BYTES (currently 23)
      * @param isHighPriority true if high priority
      */
-    public static void post(byte header, byte[] data, boolean isHighPriority) {
+    public static void post(byte header, byte[] data, boolean isHighPriority) throws GameActionException {
         int cost = determineCost(isHighPriority);
         int[] encoded = encode(header, data, cost);
 
-        try {
+
+        if (rc.canSubmitTransaction(encoded, cost)) {
             rc.submitTransaction(encoded, cost);
-        } catch (GameActionException e) {
-            //TODO: Add to queue to re-post later
         }
+
+        //TODO: Currently fails silently. probably not ideal behavior
+
     }
 
     /**
      * Post data to the block chain
      *
      * @param header header
-     * @param data int array of data to encode. Max length of MAX_DATA_INTS (currently 6)
+     * @param data int array of data to encode. Max length of MAX_DATA_INTS (currently 6), and most significant byte of data must be zeros.
      * @param isHighPriority true if high priority
      */
-    public static void post(byte header, int[] data, boolean isHighPriority) {
+    public static void post(byte header, int[] data, boolean isHighPriority) throws GameActionException {
         int cost = determineCost(isHighPriority);
+
         int[] encoded = encode(header, data, cost);
 
-        try {
+        if (rc.canSubmitTransaction(encoded, cost)) {
             rc.submitTransaction(encoded, cost);
-        } catch (GameActionException e) {
-            //TODO: Add to queue to re-post later
         }
+
+        //TODO: Currently fails silently. probably not ideal behavior
     }
 
     // TODO: Find good default here to determine cost for first round
@@ -116,24 +216,29 @@ abstract class Robot {
     private static Transaction[] previousRoundBlock = new Transaction[0];
 
     /**
-     * Update the previous round block variable to avoid calling getBlock more than once
+     * Update the previous round block and global status
      */
-    public static void updatePreviousBlockRecords() {
+    public static void blockChainSync() throws GameActionException {
 
         // In round zero this if statement is purposefully skipped because no block has been released yet
         if (lastUpdatedPreviousRoundBlockSet != rc.getRoundNum()) {
-            try {
-                previousRoundBlock = rc.getBlock(rc.getRoundNum() - 1);
-            } catch (GameActionException e) {
-                // This should never happen
-                previousRoundBlock = new Transaction[0];
-            }
+            previousRoundBlock = rc.getBlock(rc.getRoundNum() - 1);
+            lastUpdatedPreviousRoundBlockSet = rc.getRoundNum();
 
             //TODO: Should this code be here or in determineCost – byte code savings depend on how frequently data is posted
             previousRoundTotalCost = 0;
             for (Transaction t : previousRoundBlock) {
                 previousRoundTotalCost += t.getCost();
+
+                if (verifyChecksum(t.getMessage(), t.getCost())) {
+                    if (decodeHeader(t.getMessage()) == globalStatusHeader) {
+                        updateGlobalStatus(t.getMessage());
+                    }
+                }
+
             }
+
+
         }
     }
 
@@ -307,8 +412,8 @@ abstract class Robot {
      *
      * Length could be known from (e.g.) already decoded header information.
      *
-     * @param message encrypted transaction message from our team
-     * @param length known length of the data to be decoded. Message is irrevocably modified.
+     * @param message encrypted transaction message from our team. Message is irrevocably modified.
+     * @param length known length of the data to be decoded.
      * @return the decoded data
      */
     public static byte[] decodeByteData(int[] message, int length) {
