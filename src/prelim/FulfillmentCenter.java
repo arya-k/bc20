@@ -4,7 +4,7 @@ import battlecode.common.*;
 
 class FulfillmentCenter extends Building {
     static RobotType spawnType = RobotType.DELIVERY_DRONE;
-    static int spawnTick = 0;
+    static int spawnTick = -1;
 
     @Override
     public void onAwake() throws GameActionException {

@@ -1,6 +1,7 @@
 package prelim;
 
 import battlecode.common.*;
+import com.sun.javafx.collections.MapListenerHelper;
 
 /**
  * Required to use BugNav.goTo() or Explore.go()
@@ -8,7 +9,7 @@ import battlecode.common.*;
  * whether it is safe to visit a certain location.
  */
 interface NavSafetyPolicy {
-    public boolean isSafeToMoveTo(MapLocation loc);
+    public boolean isSafeToMoveTo(MapLocation loc) throws GameActionException;
 }
 
 /**
@@ -20,9 +21,11 @@ interface NavSafetyPolicy {
  *
  *  Example Usage:
  *  MapLocation target = new MapLocation(0,0);
- *  NavSafetyPolicy nsp = new AvoidAllUnitsSafetyPolicy(enemy_hq_loc);
- *  while (BugNav.goTo(target, nsp)) {
- *      rc.yield(); // BugNav.goTo returns true when an action was taken.
+ *  NavSafetyPolicy nsp = new AvoidEnemiesInclHQSafetyPolicy(rc, enemy_hq_loc);
+ *  BugNav bugNav = new BugNav(rc, nsp);
+ *  while (!rc.getLocation().equals(target) && !bn.isStuck()) {
+ *      bugNav.goTo(target);
+ *      Clock.yield();
  *  }
  *  /* you will either be at the destination, or bug will have failed
  */
@@ -40,22 +43,28 @@ public class BugNav {
     private static int bugStartDistSq; // starting distance to target
     private static Direction bugLastMoveDir; // direction last moved in
     private static Direction bugLookStartDir; // direction from start to target
-    private static int bugRotationCount; // TODO: what is this
+    private static int bugRotationCount; // number of rotations we have made around the obstacle
     private static int bugMovesSinceSeenObstacle; // to determine when to stop bugging
+    private static FastLocSet flippoints = new FastLocSet(); // set of locations where bug flipped direction
+    public static boolean stuck = false; // whether we are stuck
 
-    public BugNav(RobotController rc) {
+    public BugNav(RobotController rc, NavSafetyPolicy safety) {
         BugNav.rc = rc;
+        BugNav.safety = safety;
+    }
+
+    public static boolean isStuck() {
+        return stuck;
     }
 
     /**
      * Try to move towards a target destination.
      * @param destIn target destination
-     * @param safetyIn safety policy to take
      * @throws GameActionException
      */
-    public static void goTo(MapLocation destIn, NavSafetyPolicy safetyIn) throws GameActionException {
-        if (!rc.isReady()) {
-            return; // Robot can't do any actions this turn.
+    public static void goTo(MapLocation destIn) throws GameActionException {
+        if (!rc.isReady() || rc.getLocation().equals(destIn)) {
+            return; // Robot can't do any actions this turn OR we have arrived.
         }
 
         if (!destIn.equals(dest)) {
@@ -63,13 +72,6 @@ public class BugNav {
             bugState = BugState.DIRECT;
         }
 
-        if (rc.getLocation().equals(destIn)) {
-            return; // we have arrived- no more actions need to be taken.
-        }
-
-        safety = safetyIn;
-
-        /* TODO: SMARTER BUGGING ENDING HERE */
         bugMove();
     }
 
@@ -80,26 +82,23 @@ public class BugNav {
      * @throws GameActionException
      */
     private static void bugMove() throws GameActionException {
-        // try to stop bugging if you can
         if (bugState == BugState.BUG) {
             if (canEndBug()) {
                 bugState = BugState.DIRECT;
             }
         }
 
-        // try to move towards target
+        // If DIRECT mode, try to go directly to target
         if (bugState == BugState.DIRECT) {
-            if (!tryMoveDirect()) { // we have to bug
+            if (!tryMoveDirect()) {
                 bugState = BugState.BUG;
-                startBug(); // we will have to bug around the obstacle
-            } else {
-                return; // we moved towards the target
+                startBug();
             }
         }
 
-        // try to bug
+        // If that failed, or if bugging, bug
         if (bugState == BugState.BUG) {
-            BugTurn();
+            bugTurn();
         }
     }
 
@@ -109,7 +108,7 @@ public class BugNav {
      */
     private static boolean canEndBug() {
         if (bugMovesSinceSeenObstacle >= 4) return true;
-        return (bugRotationCount <= 0 || bugRotationCount >=8) &&
+        return (bugRotationCount <= 0 || bugRotationCount >= 8) &&
                 rc.getLocation().distanceSquaredTo(dest) <= bugStartDistSq;
     }
 
@@ -154,7 +153,7 @@ public class BugNav {
      * @param dir the direction to move in
      * @return safe (yes/no)
      */
-    private static boolean canMove(Direction dir) {
+    private static boolean canMove(Direction dir) throws GameActionException {
         return rc.canMove(dir) && safety.isSafeToMoveTo(rc.getLocation().add(dir));
     }
 
@@ -163,7 +162,7 @@ public class BugNav {
      * keeps track of distance to target, direction we've moved
      * in, whether we've rotated multiple times, etc...
      */
-    private static void startBug() {
+    private static void startBug() throws GameActionException {
         bugStartDistSq = rc.getLocation().distanceSquaredTo(dest);
         bugLastMoveDir = rc.getLocation().directionTo(dest);
         bugLookStartDir = rc.getLocation().directionTo(dest);
@@ -173,31 +172,26 @@ public class BugNav {
         // try to intelligently choose on which side we will keep the wall
         Direction leftTryDir = bugLastMoveDir.rotateLeft();
         for (int i = 0; i < 3; i++) {
-            if (!canMove(leftTryDir)) {
-                leftTryDir.rotateLeft();
-            } else {
-                break;
-            }
+            if (!canMove(leftTryDir)) leftTryDir = leftTryDir.rotateLeft();
+            else break;
         }
-
         Direction rightTryDir = bugLastMoveDir.rotateRight();
         for (int i = 0; i < 3; i++) {
-            if (!canMove(rightTryDir)) {
-                rightTryDir.rotateRight();
-            } else {
-                break;
-            }
+            if (!canMove(rightTryDir)) rightTryDir = rightTryDir.rotateRight();
+            else break;
         }
-
-        if (dest.distanceSquaredTo(rc.getLocation().add(leftTryDir)) <
-            dest.distanceSquaredTo(rc.getLocation().add(rightTryDir))) {
+        if (dest.distanceSquaredTo(rc.getLocation().add(leftTryDir)) < dest.distanceSquaredTo(rc.getLocation().add(rightTryDir))) {
             bugWallSide = WallSide.RIGHT;
         } else {
             bugWallSide = WallSide.LEFT;
         }
     }
 
-    private static void BugTurn() throws GameActionException {
+    /**
+     * Try and take one step using big movement, reversing direction if you hit the edge of the map.
+     * @throws GameActionException
+     */
+    private static void bugTurn() throws GameActionException {
         if (detectBugIntoEdge()) {
             reverseBugWallFollowDir();
         }
@@ -214,18 +208,29 @@ public class BugNav {
      */
     private static boolean detectBugIntoEdge() throws GameActionException {
         if (bugWallSide == WallSide.LEFT) {
-            return rc.onTheMap(rc.getLocation().add(bugLastMoveDir.rotateLeft()));
+            return outOfBounds(rc.getLocation().add(bugLastMoveDir.rotateLeft()));
         } else {
-            return rc.onTheMap(rc.getLocation().add(bugLastMoveDir.rotateRight()));
+            return outOfBounds(rc.getLocation().add(bugLastMoveDir.rotateRight()));
         }
+    }
+
+    /**
+     * Whether the map location is out of the bounds of the world
+     * @param loc the location to check
+     * @return true if the location is out of bounds, false otherwise.
+     */
+    private static boolean outOfBounds(MapLocation loc) {
+        return (loc.x < 0) || (loc.y < 0) || (loc.x >= rc.getMapWidth()) || (loc.y >= rc.getMapHeight());
     }
 
     /**
      * Reverse directions because we have hit the map
      * involves resetting the bug distances.
      */
-    private static void reverseBugWallFollowDir() {
+    private static void reverseBugWallFollowDir() throws GameActionException {
         bugWallSide = (bugWallSide == WallSide.LEFT ? WallSide.RIGHT : WallSide.LEFT);
+        stuck = flippoints.contains(rc.getLocation());
+        flippoints.add(rc.getLocation());
         startBug();
     }
 
@@ -234,19 +239,22 @@ public class BugNav {
      * the wall in the proper direction
      * @return the direction to move in
      */
-    public static Direction findBugMoveDir() {
+    public static Direction findBugMoveDir() throws GameActionException {
         bugMovesSinceSeenObstacle++;
         Direction dir = bugLookStartDir;
-        for (int i = 8; i-- > 0;) { // #bytecodeOptimized :)
-            if (canMove(dir)) {
-                return dir;
-            }
-            dir = (bugWallSide == WallSide.LEFT ? dir.rotateLeft() : dir.rotateRight());
+        for (int i = 8; i-- > 0;) {
+            if (canMove(dir)) return dir;
+            dir = (bugWallSide == WallSide.LEFT ? dir.rotateRight() : dir.rotateLeft());
             bugMovesSinceSeenObstacle = 0;
         }
         return null;
     }
 
+    /**
+     * Move bug in a specific direction,and update the info on the most recent moves.
+     * @param dir direction we have decided to move in
+     * @throws GameActionException could be thrown
+     */
     public static void bugMoveInDir(Direction dir) throws GameActionException{
         rc.move(dir);
         bugRotationCount += calculateBugRotation(dir);
@@ -254,7 +262,7 @@ public class BugNav {
         if (bugWallSide == WallSide.LEFT) {
             bugLookStartDir = dir.rotateLeft().rotateLeft();
         } else {
-            bugLookStartDir.rotateRight().rotateRight();
+            bugLookStartDir = dir.rotateRight().rotateRight();
         }
     }
 
@@ -275,7 +283,7 @@ public class BugNav {
      * @return numRightRotations from start to end
      */
     public static int numRightRotations(Direction start, Direction end) {
-        return (dirToInt(end) - dirToInt(start) + 8) % 8;
+        return (end.ordinal() - start.ordinal() + 8) % 8;
     }
 
     /**
@@ -285,26 +293,7 @@ public class BugNav {
      * @return numLeftRotations from start to end
      */
     public static int numLeftRotations(Direction start, Direction end) {
-        return (dirToInt(start) - dirToInt(end) + 8) % 8;
-    }
-
-    /**
-     * Convert from direction to integer, in ccw direction.
-     * @param dir
-     * @return
-     */
-    static int dirToInt(Direction dir) {
-        switch(dir) {
-            case EAST: return 0;
-            case NORTHEAST: return 1;
-            case NORTH: return 2;
-            case NORTHWEST: return 3;
-            case WEST: return 4;
-            case SOUTHWEST: return 5;
-            case SOUTH: return 6;
-            case SOUTHEAST: return 7;
-            default: return -1;
-        }
+        return (-end.ordinal() + start.ordinal() + 8) % 8;
     }
 }
 
@@ -322,7 +311,7 @@ private boolean shouldMove(Direction dir) throws GameActionException {
         }
     }
 
-         // TODO: memoize where the HQ is once you find it, so that you can attempt to path around it,
+         // we have to memoize where the HQ is once you find it, so that you can attempt to path around it,
          // because as of right now if you come within range of their HQ the drone will just freeze.
 
     return true;
