@@ -47,10 +47,10 @@ class Landscaper extends Unit {
     @Override
     public void onAwake() throws GameActionException {
         landscaped = new FastLocSet();
-        paths = new FastLocSet();
+        gatherDump = new FastLocSet();
 
-        landscapeAt(new MapLocation(33, 26), -25, false);
-        buildWallAround(new MapLocation(33, 33), 2, 8);
+        landscapeAt(new MapLocation(33, 26), -50, false);
+//        buildWallAround(new MapLocation(33, 33), 2, 8);
 //        landscapeAt(new MapLocation(35, 21), 9, true);
 //        buildPathTo(new MapLocation(36, 25));
         //travelTo(new MapLocation(36, 25));
@@ -62,7 +62,7 @@ class Landscaper extends Unit {
     }
 
     private static FastLocSet landscaped;
-    private static FastLocSet paths;
+    private static FastLocSet gatherDump;
 
     public void travelTo(MapLocation location) throws GameActionException {
         // travel to location
@@ -105,9 +105,7 @@ class Landscaper extends Unit {
             avoid gathering or dumping dirt on those areas later. Should maybe set a height limit, as this will take into account
             every single path landscaped, but that also might be good to preserve. Too excessive?
          */
-        System.out.println("landscaping at " + location);
         if (!landscaped.contains(location)) {
-            System.out.println("adding " + location + " to landscaped FastLocSet");
             landscaped.add(location);
         }
 
@@ -117,57 +115,39 @@ class Landscaper extends Unit {
             (height < 0 && (RobotType.LANDSCAPER.dirtLimit - rc.getDirtCarrying() > -height ||
                 (-height >= RobotType.LANDSCAPER.dirtLimit && rc.getDirtCarrying() == 0)))) {
 
-            // BUILD WALL ADJACENT TO LANDSCAPER
-            if (!directlyUnder) {
+            Direction dir;
 
+            if (directlyUnder) {
+                dir = Direction.CENTER;
+                travelTo(location);
+            } else {
+                dir = rc.getLocation().directionTo(location);
                 travelToAdj(location);
-
-                // PLACE AS MUCH DIRT AS POSSIBLE, OR TO THE HEIGHT AT THE LOCATION ADJACENT
-                Direction dir = rc.getLocation().directionTo(location);
-                if (height > 0) {
-                    for (int i = 0; i < height; ++i) {
-                        while (!rc.canDepositDirt(dir)) {
-                            Clock.yield();
-                        }
-                        rc.depositDirt(dir);
-                        Clock.yield();
-                    }
-                } else {
-                    for (int i = 0; i < -height; ++i) {
-                        while (!rc.canDigDirt(dir)) {
-                            Clock.yield();
-                        }
-                        rc.digDirt(dir);
-                        Clock.yield();
-                    }
-                }
-
-                if (height > RobotType.LANDSCAPER.dirtLimit) {
-                    landscapeAt(location, height - RobotType.LANDSCAPER.dirtLimit, directlyUnder);
-                }
             }
 
-            // BUILD WALL DIRECTLY BENEATH LANDSCAPER
-            else {
-                travelTo(location);
+            int build = height;
 
-                if (height > 0) {
-                    for (int i = 0; i < height; ++i) {
-                        while (!rc.canDepositDirt(Direction.CENTER)) {
-                            Clock.yield();
-                        }
-                        rc.depositDirt(Direction.CENTER);
-                        Clock.yield();
-
-                    }
-                } else {
-                    for (int i = 0; i < -height; ++i) {
-                        while (!rc.canDigDirt(Direction.CENTER)) {
-                            Clock.yield();
-                        }
-                        rc.digDirt(Direction.CENTER);
+            if (height > 0) {
+                if (height > RobotType.LANDSCAPER.dirtLimit) {
+                    build = RobotType.LANDSCAPER.dirtLimit;
+                }
+                for (int i = 0; i < build; ++i) {
+                    while (!rc.canDepositDirt(dir)) {
                         Clock.yield();
                     }
+                    rc.depositDirt(dir);
+                    Clock.yield();
+                }
+            } else {
+                if (-height > RobotType.LANDSCAPER.dirtLimit) {
+                    build = -RobotType.LANDSCAPER.dirtLimit;
+                }
+                for (int i = 0; i < -build; ++i) {
+                    while (!rc.canDigDirt(dir)) {
+                        Clock.yield();
+                    }
+                    rc.digDirt(dir);
+                    Clock.yield();
                 }
             }
         }
@@ -180,6 +160,15 @@ class Landscaper extends Unit {
                 dumpDirt(1);
             }
             landscapeAt(location, height, directlyUnder);
+        }
+
+        System.out.println("it got here");
+        if (-height > RobotType.LANDSCAPER.dirtLimit) {
+            System.out.println("the robot now has to go and dump dirt before it can gather more");
+            landscapeAt(location, height + RobotType.LANDSCAPER.dirtLimit, directlyUnder);
+        }
+        else if (height > RobotType.LANDSCAPER.dirtLimit) {
+            landscapeAt(location, height - RobotType.LANDSCAPER.dirtLimit, directlyUnder);
         }
     }
 
@@ -256,15 +245,14 @@ class Landscaper extends Unit {
     public void gatherDirt(int distance) throws GameActionException { // Gathers dirt from surroundings, attempting to leave paths intact
         /*
         search all points 'distance' away from curr loc. if no locations are found that aren't in the special arrays, try distance + 1
-
          */
+
         FastLocSet locs = setOfAdjLocations(rc.getLocation(), Direction.SOUTH, distance);
-        System.out.println("FastLocSet gotten for distance of " + distance);
         MapLocation[] keys = locs.getKeys();
 
         for (int i = 0; i < locs.getSize(); ++i) {
-            if (!landscaped.contains(keys[i]) && !paths.contains(keys[i])) {
-                System.out.println("tried to landscape at " + keys[i]);
+            if (!landscaped.contains(keys[i])) {
+                gatherDump.add(keys[i]);
                 landscapeAt(keys[i], -(RobotType.LANDSCAPER.dirtLimit-rc.getDirtCarrying()), false);
                 landscaped.remove(keys[i]);
                 return;
@@ -279,13 +267,14 @@ class Landscaper extends Unit {
         MapLocation[] keys = locs.getKeys();
 
         for (int i = 0; i < locs.getSize(); ++i) {
-            if (!landscaped.contains(keys[i]) && !paths.contains(keys[i])) {
+            if (!landscaped.contains(keys[i])) {
+                gatherDump.add(keys[i]);
                 landscapeAt(keys[i], rc.getDirtCarrying(), false);
                 landscaped.remove(keys[i]);
                 return;
             }
         }
-        gatherDirt(distance + 1);
+        dumpDirt(distance + 1);
     }
 
 
@@ -323,7 +312,7 @@ class Landscaper extends Unit {
 
 
         while (!rc.getLocation().equals(location)) {
-            paths.add(rc.getLocation());
+            landscaped.add(rc.getLocation());
             // positive if the following tile is higher than the current tile
             int elevationDiff = rc.senseElevation(rc.getLocation().add(rc.getLocation().directionTo(location))) - rc.senseElevation(rc.getLocation());
 
