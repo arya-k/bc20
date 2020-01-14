@@ -49,10 +49,21 @@ class Landscaper extends Unit {
         landscaped = new FastLocSet();
         gatherDump = new FastLocSet();
 
-        landscapeAt(new MapLocation(33, 26), -50, false);
-        buildWallAround(new MapLocation(33, 33), 1, 15);
-//        landscapeAt(new MapLocation(35, 21), 9, true);
-//        buildPathTo(new MapLocation(36, 25));
+        //buildHQMoat();
+
+        RobotInfo[] nearRobots = rc.senseNearbyRobots(RobotType.LANDSCAPER.sensorRadiusSquared, rc.getTeam());
+        MapLocation hqLoc = new MapLocation(0,0);
+        for (int i = 0; i < nearRobots.length; ++i) {
+            if (nearRobots[i].getType() == RobotType.HQ) {
+                hqLoc = nearRobots[i].getLocation();
+                System.out.println("The hq location is here " + hqLoc);
+            }
+        }
+
+        //landscapeAt(new MapLocation(33, 26), -50, false);
+        buildWallAround(hqLoc, 2, 15);
+        //landscapeAt(new MapLocation(35, 21), 9, true);
+        //buildPathTo(new MapLocation(36, 25));
         //travelTo(new MapLocation(36, 25));
 
     }
@@ -99,6 +110,11 @@ class Landscaper extends Unit {
      * @throws GameActionException
      */
     public void landscapeAt(MapLocation location, int height, boolean directlyUnder) throws GameActionException {
+        if (height == 0) {
+            Clock.yield();
+            return;
+        }
+        System.out.println("inside landscapeAt function");
 
         /*
             Adding tiles that we have landscaped intentionally in the past to the landscaped FastLocSet. This is in order to
@@ -153,7 +169,7 @@ class Landscaper extends Unit {
         }
 
         // GATHER ENOUGH DIRT OR DUMP DIRT TO TRY AGAIN (didn't have enough (space) before)
-        else if (height != 0) {
+        else {
             if (height > 0) {
                 gatherDirt(1);
             } else {
@@ -181,17 +197,22 @@ class Landscaper extends Unit {
      * @throws GameActionException
      */
     public void landscapeToElevation(MapLocation location, int elevation, boolean directlyUnder) throws GameActionException {
+        System.out.println("inside landscapetoelevation function");
         if (!rc.canSenseLocation(location)) {
             if (directlyUnder) {
+                System.out.println("trying to travel to location");
                 travelTo(location);
 
             } else {
+                System.out.println("trying to travel adj to location");
                 travelToAdj(location);
             }
         }
 
         int elevationDiff = elevation - rc.senseElevation(location); // positive if intended elevation is higher than curr elevation
+        System.out.println("trying to landscape at location");
         landscapeAt(location, elevationDiff, directlyUnder);
+        System.out.println("landscaped");
     }
 
 
@@ -205,12 +226,19 @@ class Landscaper extends Unit {
         FastLocSet locs = setOfAdjLocations(location, location.directionTo(rc.getLocation()), distanceFromPoint);
         MapLocation[] adjLocations = locs.getKeys();
 
+        for (int i = 0; i < locs.getSize(); ++i) {
+            landscaped.add(adjLocations[i]);
+        }
+        System.out.println("I found the adjacent locations");
+
         // first levels the area so that it's all consistently at the same elevation, speeding up the next process
-        levelArea(locs);
+        //levelArea(locs);
+        System.out.println("I leveled the area");
         if (!rc.canSenseLocation(adjLocations[0])) {
             travelTo(adjLocations[0]);
         }
-        int height = elevation - rc.senseElevation(adjLocations[0]);
+        int height = elevation - rc.seseElevation(adjLocations[0]);
+        Clock.yield();
         int currHeight = 0;
         while (currHeight < height-3) {
             // in order to avoid the landscaper trying to find the optimal adjacent location, it instead builds directly under itself while going
@@ -243,8 +271,38 @@ class Landscaper extends Unit {
     }
 
 
-    public void buildHQMoat(MapLocation location) throws GameActionException {
+    /**
+     * Looks for an empty spot on the area around to the HQ, then builds up at that point to 1000 (currently)
+     * @throws GameActionException
+     */
+    public void buildHQMoat() throws GameActionException {
+        // not currently sure how to get the hq location, so this is just gonna assume that it's spawned somewhere where it can see the hq
 
+        RobotInfo[] nearRobots = rc.senseNearbyRobots(RobotType.LANDSCAPER.sensorRadiusSquared, rc.getTeam());
+        MapLocation hqLoc = new MapLocation(0,0);
+        boolean found = false;
+        for (int i = 0; i < nearRobots.length; ++i) {
+            if (nearRobots[i].getType() == RobotType.HQ) {
+                hqLoc = nearRobots[i].getLocation();
+                found = true;
+            }
+        }
+        if (!found) {
+            return;
+        }
+        FastLocSet moatLocs = setOfAdjLocations(hqLoc, hqLoc.directionTo(rc.getLocation()), 2);
+        MapLocation[] locs = moatLocs.getKeys();
+        for (int i = 0; i < moatLocs.getSize(); ++i) {
+            landscaped.add(locs[i]);
+        }
+
+        for (int i = 0; i < moatLocs.getSize(); ++i) {
+            RobotInfo robot = rc.senseRobotAtLocation(locs[i]);
+            if (robot == null) {
+                // TODO: look at this again and make sure this is the best way to do it
+                landscapeAt(locs[i], 1000, true);
+            }
+        }
     }
 
 
@@ -301,13 +359,17 @@ class Landscaper extends Unit {
      * @throws GameActionException
      */
     public void levelArea(FastLocSet shape) throws GameActionException {
+        System.out.println("inside level area function");
         MapLocation[] locs = shape.getKeys();
         if (!rc.canSenseLocation(locs[0])) {
             travelToAdj(locs[0]);
+            System.out.println("traveled to location");
         }
         int elevation = rc.senseElevation(locs[0]);
         for (int i = 0; i < shape.getSize(); ++i) {
+            System.out.println("trying to landscape");
             landscapeToElevation(locs[i], elevation, false);
+            System.out.println("landscaped to elevation");
         }
     }
 
